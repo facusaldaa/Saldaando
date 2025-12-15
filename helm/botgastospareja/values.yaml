@@ -1,0 +1,57 @@
+replicaCount: 1
+
+image:
+  repository: botgastospareja
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Environment variables are set in deployment.yaml template
+
+persistence:
+  enabled: true
+  storageClass: "local-path"
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  mountPath: "/data"
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+secrets:
+  telegramBotToken: "" # Base64 encoded token or plain text (will be encoded)
+
+autoscaling:
+  enabled: false

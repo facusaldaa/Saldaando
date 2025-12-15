@@ -58,7 +58,7 @@ func (h *Handler) handleAddExpense(handler *Handler, message *tgbotapi.Message, 
 			spenderArg = argsParts[len(argsParts)-1]
 			// Remove spender from argsParts for category/payment method parsing
 			argsParts = argsParts[:len(argsParts)-1]
-		} else if parsedID, err := strconv.ParseInt(argsParts[len(argsParts)-1], 10, 64); err == nil && len(argsParts[len(argsParts)-1]) > 3 {
+		} else if _, err := strconv.ParseInt(argsParts[len(argsParts)-1], 10, 64); err == nil && len(argsParts[len(argsParts)-1]) > 3 {
 			// If last arg is a long number (likely Telegram ID), treat as spender
 			spenderArg = argsParts[len(argsParts)-1]
 			argsParts = argsParts[:len(argsParts)-1]

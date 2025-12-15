@@ -149,6 +149,10 @@ func (h *Handler) formatSettlementResult(result *service.SettlementResult, start
 			utils.FormatDate(*startDate), utils.FormatDate(*endDate))
 	}
 
+	// Get user names
+	user1Name := h.getUserDisplayName(result.User1ID, "Usuario 1")
+	user2Name := h.getUserDisplayName(result.User2ID, "Usuario 2")
+
 	msg := translator.T("settle_report",
 		periodStr,
 		result.AccountType,
@@ -160,15 +164,17 @@ func (h *Handler) formatSettlementResult(result *service.SettlementResult, start
 		msg += translator.T("settle_shared")
 	}
 
-	msg += translator.T("settle_user1_spent", utils.FormatCurrency(result.User1TotalSpent))
-	msg += translator.T("settle_user2_spent", utils.FormatCurrency(result.User2TotalSpent))
+	msg += fmt.Sprintf("%s Gastó: %s\n", user1Name, utils.FormatCurrency(result.User1TotalSpent))
+	msg += fmt.Sprintf("%s Gastó: %s\n\n", user2Name, utils.FormatCurrency(result.User2TotalSpent))
 
-	if result.AccountType == "shared" {
-		// Use actual salary percentages from lobby, not calculated from expected
-		msg += translator.T("settle_user1_expected",
-			result.User1SalaryPercentage*100, utils.FormatCurrency(result.User1Expected))
-		msg += translator.T("settle_user2_expected",
-			result.User2SalaryPercentage*100, utils.FormatCurrency(result.User2Expected))
+	// Check if salary percentages are being used (not default 0.5/0.5)
+	useSalaryPercentages := (result.User1SalaryPercentage != 0.5 || result.User2SalaryPercentage != 0.5) ||
+		result.AccountType == "shared"
+
+	if useSalaryPercentages {
+		// Use actual salary percentages from lobby
+		msg += fmt.Sprintf("%s Esperado (%.1f%%): %s\n", user1Name, result.User1SalaryPercentage*100, utils.FormatCurrency(result.User1Expected))
+		msg += fmt.Sprintf("%s Esperado (%.1f%%): %s\n\n", user2Name, result.User2SalaryPercentage*100, utils.FormatCurrency(result.User2Expected))
 	} else {
 		expectedPerPerson := result.TotalExpenses / 2.0
 		msg += translator.T("settle_expected_per", utils.FormatCurrency(expectedPerPerson))
@@ -176,17 +182,17 @@ func (h *Handler) formatSettlementResult(result *service.SettlementResult, start
 
 	// Determine who owes whom
 	if result.User1Debt > 0 {
-		msg += translator.T("settle_user1_owes", utils.FormatCurrency(result.User1Debt))
+		msg += fmt.Sprintf("➡️ %s le debe a %s: %s\n", user1Name, user2Name, utils.FormatCurrency(result.User1Debt))
 	} else if result.User1Debt < 0 {
-		msg += translator.T("settle_user2_owes", utils.FormatCurrency(-result.User1Debt))
+		msg += fmt.Sprintf("➡️ %s le debe a %s: %s\n", user2Name, user1Name, utils.FormatCurrency(-result.User1Debt))
 	} else {
 		msg += translator.T("settle_all_settled")
 	}
 
 	if result.User2Debt > 0 {
-		msg += translator.T("settle_user2_owes", utils.FormatCurrency(result.User2Debt))
+		msg += fmt.Sprintf("➡️ %s le debe a %s: %s\n", user2Name, user1Name, utils.FormatCurrency(result.User2Debt))
 	} else if result.User2Debt < 0 {
-		msg += translator.T("settle_user1_owes", utils.FormatCurrency(-result.User2Debt))
+		msg += fmt.Sprintf("➡️ %s le debe a %s: %s\n", user1Name, user2Name, utils.FormatCurrency(-result.User2Debt))
 	}
 
 	return msg

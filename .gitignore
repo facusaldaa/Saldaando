@@ -38,3 +38,12 @@ data/
 .DS_Store
 Thumbs.db
 
+# Helm - local values files with sensitive data
+helm/**/values.local.yaml
+helm/**/values.*.yaml
+helm/**/secrets.yaml
+helm/**/secrets.*.yaml
+
+# Kubernetes secrets (may contain tokens)
+k8s/secret.yaml
+k8s/*secret*.yaml

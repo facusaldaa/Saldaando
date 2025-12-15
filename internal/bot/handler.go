@@ -37,6 +37,21 @@ func (h *Handler) getTranslator(userID int64) *i18n.Translator {
 	return i18n.NewTranslator(i18n.LanguageEnglish) // Default to English
 }
 
+// getUserDisplayName gets a user's display name, falling back to username or default
+func (h *Handler) getUserDisplayName(telegramID int64, defaultLabel string) string {
+	user, err := h.userService.GetUserByTelegramID(telegramID)
+	if err != nil || user == nil {
+		return defaultLabel
+	}
+	if user.DisplayName.Valid && user.DisplayName.String != "" {
+		return user.DisplayName.String
+	}
+	if user.Username.Valid && user.Username.String != "" {
+		return "@" + user.Username.String
+	}
+	return defaultLabel
+}
+
 // Services interface for dependency injection (if needed)
 type Services struct {
 	UserService  *service.UserService

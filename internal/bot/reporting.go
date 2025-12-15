@@ -154,6 +154,10 @@ func (h *Handler) formatSummary(expenses []*database.Expense, lobby *database.Lo
 			utils.FormatDate(*startDate), utils.FormatDate(*endDate))
 	}
 
+	// Get user names
+	user1Name := h.getUserDisplayName(lobby.User1TelegramID, "Usuario 1")
+	user2Name := h.getUserDisplayName(lobby.User2TelegramID, "Usuario 2")
+
 	var total float64
 	user1Total := 0.0
 	user2Total := 0.0
@@ -188,10 +192,8 @@ func (h *Handler) formatSummary(expenses []*database.Expense, lobby *database.Lo
 
 	// Per-person breakdown
 	msg += translator.T("summary_by_person")
-	msg += translator.T("summary_user1",
-		utils.FormatCurrency(user1Total), user1Total/total*100)
-	msg += translator.T("summary_user2",
-		utils.FormatCurrency(user2Total), user2Total/total*100)
+	msg += fmt.Sprintf("%s: %s (%.1f%%)\n", user1Name, utils.FormatCurrency(user1Total), user1Total/total*100)
+	msg += fmt.Sprintf("%s: %s (%.1f%%)\n\n", user2Name, utils.FormatCurrency(user2Total), user2Total/total*100)
 
 	// Category breakdown
 	if len(categoryTotals) > 0 {
