@@ -1,0 +1,34 @@
+@startuml Expense Addition Sequence
+title "Expense Addition Sequence"
+
+actor User
+participant Bot
+participant Handler
+participant ExpenseService
+participant PaymentMethodService
+participant BillingUtils
+database SQLite
+
+User -> Bot: /add 50.00 Groceries credit_card_1
+Bot -> Handler: handleAddExpense()
+Handler -> Handler: Get lobby by user ID
+Handler -> ExpenseService: CreateExpense()
+
+alt Payment method specified
+  ExpenseService -> PaymentMethodService: GetPaymentMethodByID()
+  PaymentMethodService -> SQLite: Query payment method
+  SQLite --> PaymentMethodService: Payment method data
+  PaymentMethodService --> ExpenseService: Payment method
+  
+  ExpenseService -> BillingUtils: CalculateBillingPeriod()
+  BillingUtils --> ExpenseService: billing_period_start, billing_period_end
+end
+
+ExpenseService -> SQLite: INSERT expense
+SQLite --> ExpenseService: Expense ID
+ExpenseService --> Handler: Expense created
+Handler -> Bot: Send confirmation message
+Bot --> User: Expense added confirmation
+
+@enduml
+

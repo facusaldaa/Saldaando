@@ -1,0 +1,61 @@
+@startuml Architecture
+title "Architecture"
+
+package "Telegram Bot API" {
+  [Telegram Updates]
+}
+
+package "Bot Layer" {
+  [Handler] --> [Router]
+  [Handler] --> [Commands]
+  [Handler] --> [Callbacks]
+}
+
+package "Service Layer" {
+  [UserService]
+  [LobbyService]
+  [PaymentMethodService]
+  [ExpenseService]
+  [SettlementService]
+  [AnalysisService]
+}
+
+package "Database Layer" {
+  database "SQLite" {
+    [Users Table]
+    [Lobbies Table]
+    [Payment Methods Table]
+    [Expenses Table]
+    [Categories Table]
+  }
+}
+
+package "Utils" {
+  [Date Utils]
+  [Currency Utils]
+  [Billing Utils]
+}
+
+[Telegram Updates] --> [Handler]
+[Handler] --> [UserService]
+[Handler] --> [LobbyService]
+[Handler] --> [PaymentMethodService]
+[Handler] --> [ExpenseService]
+[Handler] --> [SettlementService]
+[Handler] --> [AnalysisService]
+
+[UserService] --> [SQLite]
+[LobbyService] --> [SQLite]
+[PaymentMethodService] --> [SQLite]
+[ExpenseService] --> [SQLite]
+[SettlementService] --> [ExpenseService]
+[SettlementService] --> [LobbyService]
+[AnalysisService] --> [ExpenseService]
+
+[ExpenseService] --> [Billing Utils]
+[ExpenseService] --> [Date Utils]
+[Handler] --> [Currency Utils]
+[Handler] --> [Date Utils]
+
+@enduml
+

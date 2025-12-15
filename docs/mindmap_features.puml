@@ -1,0 +1,50 @@
+@startmindmap Couple Expense Tracker Features
+title "Couple Expense Tracker Features"
+
+* Couple Expense Tracker Bot
+** Expense Management
+*** Add expenses
+*** List expenses
+*** Edit expenses
+*** Delete expenses
+*** Filter by date
+*** Filter by category
+*** Filter by payment method
+** Payment Methods
+*** Credit cards
+*** Debit cards
+*** Cash
+*** Bank transfer
+*** Configure closing dates
+*** Billing cycle tracking
+** Financial Models
+*** Separate accounts
+**** Equal split
+**** Track who paid
+*** Shared accounts
+**** Salary percentage based
+**** Contribution tracking
+** Settlement
+*** Monthly settlement
+*** Billing period settlement
+*** Debt calculation
+*** Settlement reports
+** Reporting
+*** Monthly summaries
+*** Category breakdowns
+*** Payment method breakdowns
+*** Date range queries
+*** Billing cycle reports
+** Analysis
+*** Monthly comparison
+*** Spending spikes detection
+*** Category trends
+*** New/discontinued categories
+** User Management
+*** Lobby creation
+*** Partner joining
+*** Account configuration
+*** Settings management
+
+@endmindmap
+

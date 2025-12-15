@@ -1,0 +1,69 @@
+@startuml Database Schema
+title "Database Schema"
+
+entity "users" {
+  * telegram_id : INTEGER <<PK>>
+  --
+  username : TEXT
+  display_name : TEXT
+  created_at : TIMESTAMP
+}
+
+entity "lobbies" {
+  * id : INTEGER <<PK>>
+  --
+  * user1_telegram_id : INTEGER <<FK>>
+  * user2_telegram_id : INTEGER <<FK>>
+  account_type : TEXT
+  user1_salary_percentage : REAL
+  user2_salary_percentage : REAL
+  created_at : TIMESTAMP
+}
+
+entity "payment_methods" {
+  * id : INTEGER <<PK>>
+  --
+  * lobby_id : INTEGER <<FK>>
+  * name : TEXT
+  * type : TEXT
+  owner_telegram_id : INTEGER <<FK>>
+  closing_day : INTEGER
+  billing_cycle_days : INTEGER
+  is_active : BOOLEAN
+  created_at : TIMESTAMP
+}
+
+entity "expenses" {
+  * id : INTEGER <<PK>>
+  --
+  * lobby_id : INTEGER <<FK>>
+  * spender_telegram_id : INTEGER <<FK>>
+  payment_method_id : INTEGER <<FK>>
+  * amount : REAL
+  description : TEXT
+  category : TEXT
+  * expense_date : DATE
+  billing_period_start : DATE
+  billing_period_end : DATE
+  created_at : TIMESTAMP
+}
+
+entity "categories" {
+  * id : INTEGER <<PK>>
+  --
+  * lobby_id : INTEGER <<FK>>
+  * name : TEXT
+  is_default : BOOLEAN
+}
+
+users ||--o{ lobbies : "user1"
+users ||--o{ lobbies : "user2"
+users ||--o{ payment_methods : "owner"
+lobbies ||--o{ payment_methods
+lobbies ||--o{ expenses
+lobbies ||--o{ categories
+users ||--o{ expenses : "spender"
+payment_methods ||--o{ expenses
+
+@enduml
+

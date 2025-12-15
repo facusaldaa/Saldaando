@@ -1,0 +1,13 @@
+services:
+  bot:
+    build: .
+    container_name: botGastosPareja
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - DB_PATH=/data/bot.db
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./data:/data
+    env_file:
+      - .env

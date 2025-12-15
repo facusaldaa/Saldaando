@@ -1,0 +1,42 @@
+@startuml Settlement Calculation Sequence
+title "Settlement Calculation Sequence"
+
+actor User
+participant Bot
+participant Handler
+participant SettlementService
+participant LobbyService
+participant ExpenseService
+database SQLite
+
+User -> Bot: /settle 2024-01
+Bot -> Handler: handleSettle()
+Handler -> Handler: Parse date range
+Handler -> SettlementService: CalculateSettlement()
+
+SettlementService -> LobbyService: GetLobbyByID()
+LobbyService -> SQLite: Query lobby
+SQLite --> LobbyService: Lobby data
+LobbyService --> SettlementService: Lobby
+
+SettlementService -> ExpenseService: GetExpensesByLobby()
+ExpenseService -> SQLite: Query expenses
+SQLite --> ExpenseService: Expenses list
+ExpenseService --> SettlementService: Expenses
+
+SettlementService -> SettlementService: Calculate totals per user
+SettlementService -> SettlementService: Calculate settlement\n(based on account type)
+
+alt Separate accounts
+  SettlementService -> SettlementService: Equal split calculation
+else Shared accounts
+  SettlementService -> SettlementService: Salary percentage calculation
+end
+
+SettlementService --> Handler: SettlementResult
+Handler -> Handler: formatSettlementResult()
+Handler -> Bot: Send settlement report
+Bot --> User: Settlement report
+
+@enduml
+
