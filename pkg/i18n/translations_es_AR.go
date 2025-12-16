@@ -37,6 +37,8 @@ var spanishARTranslations = map[string]string{
 /add <monto> <descripción> [categoría] [método_pago] - Agregar un gasto
 /list [mes] - Listar gastos (mes actual o especificado)
 /list_billing [método_pago] [período] - Listar gastos por ciclo de facturación
+/delete [id_gasto] - Eliminar un gasto (muestra gastos recientes si no se proporciona ID)
+/edit <id_gasto> <campo> <valor> - Editar un gasto (campos: category, payment_method)
 
 *Reportes y Análisis:*
 /summary [fecha_inicio] [fecha_fin] - Obtener resumen de gastos
@@ -109,24 +111,39 @@ Para más detalles, usá cada comando sin argumentos para ver su uso.`,
 	"payment_method_unknown_action":   "❌ Acción desconocida. Usá: `add`, `edit`, o `delete`",
 
 	// Expenses
-	"expense_add_usage":        "❌ Uso: `/add <monto> <descripción> [categoría] [método_pago]`\n\nEjemplos:\n`/add 50.00 Supermercado`\n`/add 25.50 Cena tarjeta_1`",
-	"expense_invalid_amount":   "❌ Monto inválido. Por favor proporcioná un número positivo.",
-	"expense_added":            "✅ ¡Gasto agregado!\n\nMonto: %s\nDescripción: %s\n",
-	"expense_category":         "Categoría: %s\n",
-	"expense_payment_method":   "Método de Pago: %s\n",
-	"expense_billing_period":   "Período de Facturación: %s a %s\n",
-	"expense_add_error":        "❌ No se pudo agregar el gasto: %v",
-	"expense_list_none":        "📋 No se encontraron gastos para %s.",
-	"expense_list_header":      "📋 *Gastos* (%d)\n\n",
-	"expense_list_item":        "• %s - %s\n",
-	"expense_list_category":    "  Categoría: %s\n",
-	"expense_list_date":        "  Fecha: %s\n\n",
-	"expense_list_total":       "*Total: %s*",
-	"expense_no_description":   "Sin descripción",
-	"expense_billing_usage":    "❌ Uso: `/list_billing <método_pago> [período]`\n\nEjemplo: `/list_billing Visa 2024-01`",
-	"expense_billing_no_cycle": "❌ Este método de pago no tiene un ciclo de facturación configurado.",
-	"expense_billing_none":     "📋 No se encontraron gastos para el período de facturación %s a %s.",
-	"expense_billing_header":   "📋 *Gastos del Período de Facturación*\nMétodo de Pago: %s\nPeríodo: %s a %s\n\n",
+	"expense_add_usage":           "❌ Uso: `/add <monto> <descripción> [categoría] [método_pago]`\n\nEjemplos:\n`/add 50.00 Supermercado`\n`/add 25.50 Cena tarjeta_1`",
+	"expense_invalid_amount":      "❌ Monto inválido. Por favor proporcioná un número positivo.",
+	"expense_added":               "✅ ¡Gasto agregado!\n\nMonto: %s\nDescripción: %s\n",
+	"expense_category":            "Categoría: %s\n",
+	"expense_payment_method":      "Método de Pago: %s\n",
+	"expense_billing_period":      "Período de Facturación: %s a %s\n",
+	"expense_add_error":           "❌ No se pudo agregar el gasto: %v",
+	"expense_list_none":           "📋 No se encontraron gastos para %s.",
+	"expense_list_header":         "📋 *Gastos* (%d)\n\n",
+	"expense_list_item":           "• %s - %s\n",
+	"expense_list_category":       "  Categoría: %s\n",
+	"expense_list_date":           "  Fecha: %s\n\n",
+	"expense_list_total":          "*Total: %s*",
+	"expense_no_description":      "Sin descripción",
+	"expense_billing_usage":       "❌ Uso: `/list_billing <método_pago> [período]`\n\nEjemplo: `/list_billing Visa 2024-01`",
+	"expense_billing_no_cycle":    "❌ Este método de pago no tiene un ciclo de facturación configurado.",
+	"expense_billing_none":        "📋 No se encontraron gastos para el período de facturación %s a %s.",
+	"expense_billing_header":      "📋 *Gastos del Período de Facturación*\nMétodo de Pago: %s\nPeríodo: %s a %s\n\n",
+	"expense_delete_usage":        "❌ Uso: `/delete <id_gasto>`\n\nEjemplo: `/delete 123`",
+	"expense_delete_none":         "📋 No se encontraron gastos para eliminar.",
+	"expense_delete_list_header":  "📋 *Gastos Recientes (Últimos 10):*\n\n",
+	"expense_delete_invalid_id":   "❌ ID de gasto inválido. Uso: `/delete <id_gasto>`",
+	"expense_delete_not_found":    "❌ Gasto no encontrado o no pertenece a tu lobby.",
+	"expense_delete_error":        "❌ No se pudo eliminar el gasto: %v",
+	"expense_deleted":             "✅ ¡Gasto eliminado exitosamente!",
+	"expense_edit_usage":          "❌ Uso: `/edit <id_gasto> <campo> <valor>`\n\nCampos: `category` (categoría), `payment_method` (método_pago)\n\nEjemplos:\n`/edit 123 category Supermercado`\n`/edit 123 payment_method Visa`",
+	"expense_edit_invalid_id":     "❌ ID de gasto inválido. Uso: `/edit <id_gasto> <campo> <valor>`",
+	"expense_edit_not_found":      "❌ Gasto no encontrado o no pertenece a tu lobby.",
+	"expense_edit_category_usage": "❌ Uso: `/edit <id_gasto> category <nombre_categoría>`",
+	"expense_edit_payment_usage":  "❌ Uso: `/edit <id_gasto> payment_method <nombre_método_pago>`",
+	"expense_edit_invalid_field":  "❌ Campo inválido. Usá `category` o `payment_method`.",
+	"expense_edit_error":          "❌ No se pudo editar el gasto: %v",
+	"expense_edited":              "✅ ¡Gasto actualizado exitosamente!",
 
 	// Settlement
 	"settle_usage":          "❌ Uso: `/settle_billing <método_pago> [período]`\n\nEjemplo: `/settle_billing Visa 2024-01`",

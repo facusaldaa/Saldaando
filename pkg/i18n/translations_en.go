@@ -37,6 +37,8 @@ var englishTranslations = map[string]string{
 /add <amount> <description> [category] [payment_method] - Add an expense
 /list [month] - List expenses (current month or specified)
 /list_billing [payment_method] [period] - List expenses by billing cycle
+/delete [expense_id] - Delete an expense (shows recent expenses if no ID provided)
+/edit <expense_id> <field> <value> - Edit an expense (fields: category, payment_method)
 
 *Reports & Analysis:*
 /summary [start_date] [end_date] - Get spending summary
@@ -109,24 +111,39 @@ For more details, use each command without arguments to see its usage.`,
 	"payment_method_unknown_action":   "❌ Unknown action. Use: `add`, `edit`, or `delete`",
 
 	// Expenses
-	"expense_add_usage":        "❌ Usage: `/add <amount> <description> [category] [payment_method]`\n\nExamples:\n`/add 50.00 Groceries`\n`/add 25.50 Dinner credit_card_1`",
-	"expense_invalid_amount":   "❌ Invalid amount. Please provide a positive number.",
-	"expense_added":            "✅ Expense added!\n\nAmount: %s\nDescription: %s\n",
-	"expense_category":         "Category: %s\n",
-	"expense_payment_method":   "Payment Method: %s\n",
-	"expense_billing_period":   "Billing Period: %s to %s\n",
-	"expense_add_error":        "❌ Failed to add expense: %v",
-	"expense_list_none":        "📋 No expenses found for %s.",
-	"expense_list_header":      "📋 *Expenses* (%d)\n\n",
-	"expense_list_item":        "• %s - %s\n",
-	"expense_list_category":    "  Category: %s\n",
-	"expense_list_date":        "  Date: %s\n\n",
-	"expense_list_total":       "*Total: %s*",
-	"expense_no_description":   "No description",
-	"expense_billing_usage":    "❌ Usage: `/list_billing <payment_method> [period]`\n\nExample: `/list_billing Visa 2024-01`",
-	"expense_billing_no_cycle": "❌ This payment method doesn't have a billing cycle configured.",
-	"expense_billing_none":     "📋 No expenses found for billing period %s to %s.",
-	"expense_billing_header":   "📋 *Billing Period Expenses*\nPayment Method: %s\nPeriod: %s to %s\n\n",
+	"expense_add_usage":           "❌ Usage: `/add <amount> <description> [category] [payment_method]`\n\nExamples:\n`/add 50.00 Groceries`\n`/add 25.50 Dinner credit_card_1`",
+	"expense_invalid_amount":      "❌ Invalid amount. Please provide a positive number.",
+	"expense_added":               "✅ Expense added!\n\nAmount: %s\nDescription: %s\n",
+	"expense_category":            "Category: %s\n",
+	"expense_payment_method":      "Payment Method: %s\n",
+	"expense_billing_period":      "Billing Period: %s to %s\n",
+	"expense_add_error":           "❌ Failed to add expense: %v",
+	"expense_list_none":           "📋 No expenses found for %s.",
+	"expense_list_header":         "📋 *Expenses* (%d)\n\n",
+	"expense_list_item":           "• %s - %s\n",
+	"expense_list_category":       "  Category: %s\n",
+	"expense_list_date":           "  Date: %s\n\n",
+	"expense_list_total":          "*Total: %s*",
+	"expense_no_description":      "No description",
+	"expense_billing_usage":       "❌ Usage: `/list_billing <payment_method> [period]`\n\nExample: `/list_billing Visa 2024-01`",
+	"expense_billing_no_cycle":    "❌ This payment method doesn't have a billing cycle configured.",
+	"expense_billing_none":        "📋 No expenses found for billing period %s to %s.",
+	"expense_billing_header":      "📋 *Billing Period Expenses*\nPayment Method: %s\nPeriod: %s to %s\n\n",
+	"expense_delete_usage":        "❌ Usage: `/delete <expense_id>`\n\nExample: `/delete 123`",
+	"expense_delete_none":         "📋 No expenses found to delete.",
+	"expense_delete_list_header":  "📋 *Recent Expenses (Last 10):*\n\n",
+	"expense_delete_invalid_id":   "❌ Invalid expense ID. Usage: `/delete <expense_id>`",
+	"expense_delete_not_found":    "❌ Expense not found or doesn't belong to your lobby.",
+	"expense_delete_error":        "❌ Failed to delete expense: %v",
+	"expense_deleted":             "✅ Expense deleted successfully!",
+	"expense_edit_usage":          "❌ Usage: `/edit <expense_id> <field> <value>`\n\nFields: `category`, `payment_method`\n\nExamples:\n`/edit 123 category Groceries`\n`/edit 123 payment_method Visa`",
+	"expense_edit_invalid_id":     "❌ Invalid expense ID. Usage: `/edit <expense_id> <field> <value>`",
+	"expense_edit_not_found":      "❌ Expense not found or doesn't belong to your lobby.",
+	"expense_edit_category_usage": "❌ Usage: `/edit <expense_id> category <category_name>`",
+	"expense_edit_payment_usage":  "❌ Usage: `/edit <expense_id> payment_method <payment_method_name>`",
+	"expense_edit_invalid_field":  "❌ Invalid field. Use `category` or `payment_method`.",
+	"expense_edit_error":          "❌ Failed to edit expense: %v",
+	"expense_edited":              "✅ Expense updated successfully!",
 
 	// Settlement
 	"settle_usage":          "❌ Usage: `/settle_billing <payment_method> [period]`\n\nExample: `/settle_billing Visa 2024-01`",
