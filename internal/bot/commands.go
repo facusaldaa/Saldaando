@@ -187,6 +187,10 @@ func (h *Handler) handleStart(handler *Handler, message *tgbotapi.Message, args 
 
 // handleHelp handles the /help command
 func (h *Handler) handleHelp(handler *Handler, message *tgbotapi.Message, args string) {
+	if message.From == nil {
+		handler.sendMessage(message.Chat.ID, "❌ Error: This command must be used by a user.")
+		return
+	}
 	userID := message.From.ID
 	translator := handler.getTranslator(userID)
 	helpText := translator.T("help")

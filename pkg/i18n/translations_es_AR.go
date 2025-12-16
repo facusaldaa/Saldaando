@@ -46,9 +46,26 @@ var spanishARTranslations = map[string]string{
 
 *Configuración:*
 /payment_methods - Gestionar métodos de pago (agregar, editar, eliminar)
+  Ejemplos:
+  ` + "`/payment_methods`" + ` - Listar todos los métodos de pago
+  ` + "`/payment_methods add Visa credit_card 15`" + ` - Agregar tarjeta de crédito con día de cierre 15
+  ` + "`/payment_methods edit 1 closing_day 20`" + ` - Editar método de pago #1
+  ` + "`/payment_methods delete 1`" + ` - Eliminar método de pago #1
+
 /categories - Gestionar categorías
+  Ejemplo: ` + "`/categories`" + ` - Listar todas las categorías
+
 /settings - Configurar tipo de cuenta, porcentajes de sueldo
+  Ejemplos:
+  ` + "`/settings`" + ` - Mostrar configuración actual
+  ` + "`/settings account_type shared`" + ` - Establecer tipo de cuenta compartida
+  ` + "`/settings salary 0.6 0.4`" + ` - Establecer porcentajes de sueldo (60% usuario1, 40% usuario2)
+
 /language - Cambiar idioma
+  Ejemplos:
+  ` + "`/language`" + ` - Mostrar idioma actual
+  ` + "`/language en`" + ` - Cambiar a Inglés
+  ` + "`/language es_AR`" + ` - Cambiar a Español
 
 *Ejemplos:*
 ` + "`/add 50.00 Supermercado`" + `

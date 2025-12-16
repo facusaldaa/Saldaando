@@ -46,9 +46,26 @@ var englishTranslations = map[string]string{
 
 *Configuration:*
 /payment_methods - Manage payment methods (add, edit, delete)
+  Examples:
+  ` + "`/payment_methods`" + ` - List all payment methods
+  ` + "`/payment_methods add Visa credit_card 15`" + ` - Add credit card with closing day 15
+  ` + "`/payment_methods edit 1 closing_day 20`" + ` - Edit payment method #1
+  ` + "`/payment_methods delete 1`" + ` - Delete payment method #1
+
 /categories - Manage categories
+  Example: ` + "`/categories`" + ` - List all categories
+
 /settings - Configure account type, salary percentages
+  Examples:
+  ` + "`/settings`" + ` - Show current settings
+  ` + "`/settings account_type shared`" + ` - Set account type to shared
+  ` + "`/settings salary 0.6 0.4`" + ` - Set salary percentages (60% user1, 40% user2)
+
 /language - Change language
+  Examples:
+  ` + "`/language`" + ` - Show current language
+  ` + "`/language en`" + ` - Change to English
+  ` + "`/language es_AR`" + ` - Change to Spanish
 
 *Examples:*
 ` + "`/add 50.00 Groceries`" + `
