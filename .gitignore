@@ -47,3 +47,4 @@ helm/**/secrets.*.yaml
 # Kubernetes secrets (may contain tokens)
 k8s/secret.yaml
 k8s/*secret*.yaml
+token.txt
