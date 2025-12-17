@@ -115,7 +115,24 @@ func (h *Handler) handleAddExpense(handler *Handler, message *tgbotapi.Message, 
 			}
 		}
 		if paymentMethodID == nil {
-			handler.sendTranslatedMessage(userID, message.Chat.ID, "payment_method_not_found", paymentMethodName)
+			// Show available payment methods
+			if len(methods) > 0 {
+				var items []string
+				for _, method := range methods {
+					status := "✅"
+					if !method.IsActive {
+						status = "❌"
+					}
+					item := translator.T("payment_method_item", status, method.Name, method.Type)
+					if method.ClosingDay.Valid {
+						item += translator.T("payment_method_closing", method.ClosingDay.Int64)
+					}
+					items = append(items, item)
+				}
+				handler.sendTranslatedMessage(userID, message.Chat.ID, "payment_method_not_found_list", paymentMethodName, strings.Join(items, "\n"))
+			} else {
+				handler.sendTranslatedMessage(userID, message.Chat.ID, "payment_method_not_found", paymentMethodName)
+			}
 		}
 	}
 

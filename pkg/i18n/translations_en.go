@@ -32,6 +32,7 @@ var englishTranslations = map[string]string{
 *Basic Commands:*
 /start - Initialize bot and create/join lobby
 /help - Show this help message
+/examples - Show command usage examples
 
 *Expense Management:*
 /add <amount> <description> [category] [payment_method] - Add an expense
@@ -99,7 +100,8 @@ For more details, use each command without arguments to see its usage.`,
 	"payment_method_add_usage":        "❌ Usage: `/payment_methods add <name> <type> [closing_day]`\n\nTypes: credit_card, debit_card, cash, bank_transfer, other\nExample: `/payment_methods add Visa credit_card 15`",
 	"payment_method_closing_required": "❌ Credit cards require a closing day. Usage: `/payment_methods add <name> credit_card <closing_day>`",
 	"payment_method_closing_invalid":  "❌ Closing day must be a number between 1 and 31",
-	"payment_method_not_found":        "⚠️ Payment method '%s' not found. Expense added without payment method.",
+	"payment_method_not_found":        "⚠️ Payment method '%s' not found.",
+	"payment_method_not_found_list":   "⚠️ Payment method '%s' not found.\n\nAvailable methods:\n%s\n\nExpense added without payment method.",
 	"payment_method_add_error":        "❌ Failed to create payment method: %v",
 	"payment_method_edit_usage":       "❌ Usage: `/payment_methods edit <id> <field> <value>`\n\nFields: name, type, closing_day, active\nExample: `/payment_methods edit 1 closing_day 20`",
 	"payment_method_delete_usage":     "❌ Usage: `/payment_methods delete <id>`",
@@ -194,4 +196,99 @@ For more details, use each command without arguments to see its usage.`,
 	"language_changed": "✅ Language changed to %s",
 	"language_usage":   "❌ Usage: `/language <code>`\n\nAvailable languages:\n%s",
 	"language_invalid": "❌ Invalid language code. Available: %s",
+
+	// Examples
+	"examples": `📚 *COMMAND EXAMPLES - COUPLE EXPENSE TRACKER BOT*
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 *ADD EXPENSES* (` + "`/add`" + `)
+
+Format: ` + "`/add <amount> <description> [category] [payment_method]`" + `
+
+Basic examples:
+• ` + "`/add 50.00 Groceries`" + `
+• ` + "`/add 1250.50 Rent`" + `
+• ` + "`/add 25.50 Dinner Restaurant`" + `
+
+With category:
+• ` + "`/add 50.00 Groceries Food`" + `
+• ` + "`/add 500 Netflix Services`" + `
+
+With payment method:
+• ` + "`/add 50.00 Groceries Food Visa`" + `
+• ` + "`/add 25.50 Dinner Cash`" + `
+
+For your partner:
+• ` + "`/add 50.00 Groceries Food Visa partner`" + `
+• ` + "`/add 25.50 Dinner partner`" + `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✏️ *EDIT EXPENSES* (` + "`/edit`" + `)
+
+Format: ` + "`/edit <expense_id> <field> <value>`" + `
+
+Fields: ` + "`category`" + `, ` + "`payment_method`" + ` (or ` + "`payment`" + `)
+
+Examples:
+• ` + "`/edit 123 category Groceries`" + `
+• ` + "`/edit 456 payment_method Visa`" + `
+• ` + "`/edit 789 payment Cash`" + `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🗑️ *DELETE EXPENSES* (` + "`/delete`" + `)
+
+Format: ` + "`/delete <expense_id>`" + `
+
+Examples:
+• ` + "`/delete 123`" + `
+• ` + "`/delete 456`" + `
+
+Without ID shows last 10 expenses:
+• ` + "`/delete`" + `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💳 *ADD PAYMENT METHODS* (` + "`/payment_methods add`" + `)
+
+Format: ` + "`/payment_methods add <name> <type> [closing_day]`" + `
+
+Accepted types:
+• ` + "`credit_card`" + `
+• ` + "`debit_card`" + `
+• ` + "`cash`" + `
+• ` + "`bank_transfer`" + `
+• ` + "`other`" + `
+
+Examples:
+• ` + "`/payment_methods add Visa credit_card 15`" + `
+• ` + "`/payment_methods add Debit debit_card`" + `
+• ` + "`/payment_methods add Cash cash`" + `
+• ` + "`/payment_methods add Transfer bank_transfer`" + `
+• ` + "`/payment_methods add PayPal other`" + `
+
+⚠️ Credit cards require a closing day (1-31)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 *VIEW PAYMENT METHODS*
+• ` + "`/payment_methods`" + `
+
+🔧 *EDIT PAYMENT METHODS*
+• ` + "`/payment_methods edit <id> <field> <value>`" + `
+• Example: ` + "`/payment_methods edit 1 closing_day 20`" + `
+
+🗑️ *DELETE PAYMENT METHODS*
+• ` + "`/payment_methods delete <id>`" + `
+• Example: ` + "`/payment_methods delete 1`" + `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 *NOTES:*
+• Amounts with dot: ` + "`50.00`" + `, ` + "`1250.50`" + `
+• IDs are shown when creating/listing
+• Payment method names are case-insensitive
+• Use ` + "`/help`" + ` to see all commands`,
 }
