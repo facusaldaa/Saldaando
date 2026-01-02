@@ -198,9 +198,8 @@ func (h *Handler) formatSettlementResult(result *service.SettlementResult, start
 	msg += fmt.Sprintf("%s Gastó: %s\n", user1Name, utils.FormatCurrency(result.User1TotalSpent))
 	msg += fmt.Sprintf("%s Gastó: %s\n\n", user2Name, utils.FormatCurrency(result.User2TotalSpent))
 
-	// Check if salary percentages are being used (not default 0.5/0.5)
-	useSalaryPercentages := (result.User1SalaryPercentage != 0.5 || result.User2SalaryPercentage != 0.5) ||
-		result.AccountType == "shared"
+	// Check if salary percentages are being used (only for shared accounts)
+	useSalaryPercentages := result.AccountType == "shared"
 
 	if useSalaryPercentages {
 		// Use actual salary percentages from lobby
@@ -211,19 +210,13 @@ func (h *Handler) formatSettlementResult(result *service.SettlementResult, start
 		msg += translator.T("settle_expected_per", utils.FormatCurrency(expectedPerPerson))
 	}
 
-	// Determine who owes whom
+	// Determine who owes whom (only check one debt value to avoid duplicates)
 	if result.User1Debt > 0 {
 		msg += fmt.Sprintf("➡️ %s le debe a %s: %s\n", user1Name, user2Name, utils.FormatCurrency(result.User1Debt))
 	} else if result.User1Debt < 0 {
 		msg += fmt.Sprintf("➡️ %s le debe a %s: %s\n", user2Name, user1Name, utils.FormatCurrency(-result.User1Debt))
 	} else {
 		msg += translator.T("settle_all_settled")
-	}
-
-	if result.User2Debt > 0 {
-		msg += fmt.Sprintf("➡️ %s le debe a %s: %s\n", user2Name, user1Name, utils.FormatCurrency(result.User2Debt))
-	} else if result.User2Debt < 0 {
-		msg += fmt.Sprintf("➡️ %s le debe a %s: %s\n", user1Name, user2Name, utils.FormatCurrency(-result.User2Debt))
 	}
 
 	return msg

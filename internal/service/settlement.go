@@ -65,7 +65,7 @@ func (s *SettlementService) CalculateSettlement(lobbyID int64, startDate *time.T
 		User1ID:               lobby.User1TelegramID,
 		User2ID:               lobby.User2TelegramID,
 		User1SalaryPercentage: lobby.User1SalaryPercentage,
-		User2SalaryPercentage: lobby.User2SalaryPercentage,
+		User2SalaryPercentage:    lobby.User2SalaryPercentage,
 		Expenses:              expenses,
 	}
 
@@ -86,19 +86,17 @@ func (s *SettlementService) CalculateSettlement(lobbyID int64, startDate *time.T
 		}
 	}
 
-	// Calculate settlement based on salary percentages
-	// Use salary percentages if configured (not default 0.5/0.5), otherwise equal split
-	useSalaryPercentages := (lobby.User1SalaryPercentage != 0.5 || lobby.User2SalaryPercentage != 0.5) ||
-		lobby.AccountType == "shared"
-
-	if useSalaryPercentages {
-		// Based on salary percentage
+	// Calculate settlement based on account type
+	// Separate accounts: always 50/50 split
+	// Shared accounts: use salary percentages
+	if lobby.AccountType == "shared" {
+		// Based on salary percentage for shared accounts
 		result.User1Expected = result.TotalExpenses * lobby.User1SalaryPercentage
 		result.User2Expected = result.TotalExpenses * lobby.User2SalaryPercentage
 		result.User1Debt = result.User1Expected - result.User1TotalSpent
 		result.User2Debt = result.User2Expected - result.User2TotalSpent
 	} else {
-		// Equal split (default for separate accounts without custom percentages)
+		// Equal split for separate accounts (always 50/50)
 		expectedPerPerson := result.TotalExpenses / 2.0
 		result.User1Debt = expectedPerPerson - result.User1TotalSpent
 		result.User2Debt = expectedPerPerson - result.User2TotalSpent
@@ -148,19 +146,17 @@ func (s *SettlementService) CalculateBillingSettlement(lobbyID int64, paymentMet
 		}
 	}
 
-	// Calculate settlement based on salary percentages
-	// Use salary percentages if configured (not default 0.5/0.5), otherwise equal split
-	useSalaryPercentages := (lobby.User1SalaryPercentage != 0.5 || lobby.User2SalaryPercentage != 0.5) ||
-		lobby.AccountType == "shared"
-
-	if useSalaryPercentages {
-		// Based on salary percentage
+	// Calculate settlement based on account type
+	// Separate accounts: always 50/50 split
+	// Shared accounts: use salary percentages
+	if lobby.AccountType == "shared" {
+		// Based on salary percentage for shared accounts
 		result.User1Expected = result.TotalExpenses * lobby.User1SalaryPercentage
 		result.User2Expected = result.TotalExpenses * lobby.User2SalaryPercentage
 		result.User1Debt = result.User1Expected - result.User1TotalSpent
 		result.User2Debt = result.User2Expected - result.User2TotalSpent
 	} else {
-		// Equal split (default for separate accounts without custom percentages)
+		// Equal split for separate accounts (always 50/50)
 		expectedPerPerson := result.TotalExpenses / 2.0
 		result.User1Debt = expectedPerPerson - result.User1TotalSpent
 		result.User2Debt = expectedPerPerson - result.User2TotalSpent
