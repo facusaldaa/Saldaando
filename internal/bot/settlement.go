@@ -54,11 +54,27 @@ func (h *Handler) handleSettle(handler *Handler, message *tgbotapi.Message, args
 	}
 
 	if startDate == nil {
-		// Default to current month
+		// Smart default: use previous month if current month is empty or just started (first 3 days)
 		now := time.Now()
-		start, end := utils.GetMonthStartEnd(now.Year(), now.Month())
-		startDate = &start
-		endDate = &end
+		currentStart, currentEnd := utils.GetMonthStartEnd(now.Year(), now.Month())
+		
+		// Check if current month has expenses
+		currentExpenses, err := handler.expenseService.GetExpensesByLobby(lobby.ID, &currentStart, &currentEnd, nil)
+		hasCurrentExpenses := err == nil && len(currentExpenses) > 0
+		
+		// Use previous month if:
+		// 1. Current month has no expenses AND it's past the 3rd day of the month, OR
+		// 2. It's within the first 3 days of the month (likely want to see last month's settlement)
+		if (!hasCurrentExpenses && now.Day() > 3) || (now.Day() <= 3) {
+			prevMonth := now.AddDate(0, -1, 0)
+			start, end := utils.GetMonthStartEnd(prevMonth.Year(), prevMonth.Month())
+			startDate = &start
+			endDate = &end
+		} else {
+			// Use current month if it has expenses and we're past day 3
+			startDate = &currentStart
+			endDate = &currentEnd
+		}
 	}
 
 	result, err := handler.settlementService.CalculateSettlement(lobby.ID, startDate, endDate)
@@ -114,7 +130,7 @@ func (h *Handler) handleSettleBilling(handler *Handler, message *tgbotapi.Messag
 		return
 	}
 
-	// Parse period or use current
+	// Parse period or use smart default
 	var periodStart, periodEnd time.Time
 	if len(argsParts) >= 2 {
 		monthTime, err := utils.ParseMonth(argsParts[1])
@@ -125,9 +141,24 @@ func (h *Handler) handleSettleBilling(handler *Handler, message *tgbotapi.Messag
 		periodStart, periodEnd = utils.GetBillingPeriodForMonth(
 			monthTime.Year(), monthTime.Month(), int(paymentMethod.ClosingDay.Int64))
 	} else {
+		// Smart default: use previous month if current month is empty or just started
 		now := time.Now()
-		periodStart, periodEnd = utils.GetBillingPeriodForMonth(
+		currentStart, currentEnd := utils.GetBillingPeriodForMonth(
 			now.Year(), now.Month(), int(paymentMethod.ClosingDay.Int64))
+		
+		// Check if current billing period has expenses
+		currentExpenses, err := handler.expenseService.GetExpensesByBillingPeriod(
+			lobby.ID, paymentMethod.ID, currentStart, currentEnd)
+		hasCurrentExpenses := err == nil && len(currentExpenses) > 0
+		
+		// Use previous month if current period is empty or it's early in the month
+		if (!hasCurrentExpenses && now.Day() > 3) || (now.Day() <= 3) {
+			prevMonth := now.AddDate(0, -1, 0)
+			periodStart, periodEnd = utils.GetBillingPeriodForMonth(
+				prevMonth.Year(), prevMonth.Month(), int(paymentMethod.ClosingDay.Int64))
+		} else {
+			periodStart, periodEnd = currentStart, currentEnd
+		}
 	}
 
 	result, err := handler.settlementService.CalculateBillingSettlement(

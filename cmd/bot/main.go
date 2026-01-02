@@ -45,6 +45,16 @@ func main() {
 		log.Println("Bot commands registered with Telegram")
 	}
 
+	// Start settlement scheduler for automatic monthly settlements
+	scheduler := bot.NewSettlementScheduler(
+		telegramBot,
+		handler.GetLobbyService(),
+		handler.GetSettlementService(),
+		handler.GetExpenseService(),
+	)
+	scheduler.Start()
+	log.Println("Settlement scheduler started")
+
 	// Set up update configuration
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60

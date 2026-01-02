@@ -330,3 +330,16 @@ func (h *Handler) sendMessageWithKeyboard(chatID int64, text string, keyboard tg
 		log.Printf("Error sending message with keyboard: %v", err)
 	}
 }
+
+// Getter methods for services (used by scheduler)
+func (h *Handler) GetLobbyService() *service.LobbyService {
+	return h.lobbyService
+}
+
+func (h *Handler) GetSettlementService() *service.SettlementService {
+	return h.settlementService
+}
+
+func (h *Handler) GetExpenseService() *service.ExpenseService {
+	return h.expenseService
+}

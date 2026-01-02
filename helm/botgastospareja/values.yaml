@@ -1,8 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: botgastospareja
-  pullPolicy: IfNotPresent
+  repository: ghcr.io/facusaldaa/botgastospareja
+  pullPolicy: Always
   tag: "latest"
 
 imagePullSecrets: []

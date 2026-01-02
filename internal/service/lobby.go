@@ -611,3 +611,79 @@ func (s *LobbyService) UpdateLobbySettings(lobbyID int64, accountType *string, u
 
 	return nil
 }
+
+// GetAllActiveLobbies gets all active lobbies (with both users)
+func (s *LobbyService) GetAllActiveLobbies() ([]*database.Lobby, error) {
+	conn := s.db.GetConn()
+
+	// Check if new columns exist
+	var hasInviteToken, hasGroupChatID bool
+	_ = conn.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('lobbies') WHERE name='invite_token'`).Scan(&hasInviteToken)
+	_ = conn.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('lobbies') WHERE name='group_chat_id'`).Scan(&hasGroupChatID)
+
+	var query string
+	if hasInviteToken && hasGroupChatID {
+		query = `SELECT id, user1_telegram_id, user2_telegram_id, account_type, 
+		          user1_salary_percentage, user2_salary_percentage, invite_token, 
+		          group_chat_id, created_at
+		          FROM lobbies 
+		          WHERE user2_telegram_id IS NOT NULL AND user2_telegram_id != 0`
+	} else {
+		query = `SELECT id, user1_telegram_id, user2_telegram_id, account_type, 
+		          user1_salary_percentage, user2_salary_percentage, created_at
+		          FROM lobbies 
+		          WHERE user2_telegram_id IS NOT NULL AND user2_telegram_id != 0`
+	}
+
+	rows, err := conn.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query lobbies: %w", err)
+	}
+	defer rows.Close()
+
+	var lobbies []*database.Lobby
+	for rows.Next() {
+		var lobby database.Lobby
+		var user2ID sql.NullInt64
+
+		if hasInviteToken && hasGroupChatID {
+			err = rows.Scan(
+				&lobby.ID,
+				&lobby.User1TelegramID,
+				&user2ID,
+				&lobby.AccountType,
+				&lobby.User1SalaryPercentage,
+				&lobby.User2SalaryPercentage,
+				&lobby.InviteToken,
+				&lobby.GroupChatID,
+				&lobby.CreatedAt,
+			)
+		} else {
+			err = rows.Scan(
+				&lobby.ID,
+				&lobby.User1TelegramID,
+				&user2ID,
+				&lobby.AccountType,
+				&lobby.User1SalaryPercentage,
+				&lobby.User2SalaryPercentage,
+				&lobby.CreatedAt,
+			)
+			lobby.InviteToken = sql.NullString{Valid: false}
+			lobby.GroupChatID = sql.NullInt64{Valid: false}
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan lobby: %w", err)
+		}
+
+		if user2ID.Valid {
+			lobby.User2TelegramID = user2ID.Int64
+		} else {
+			lobby.User2TelegramID = 0
+		}
+
+		lobbies = append(lobbies, &lobby)
+	}
+
+	return lobbies, nil
+}
