@@ -113,7 +113,7 @@ For more details, use each command without arguments to see its usage.`,
 	"payment_method_unknown_action":   "❌ Unknown action. Use: `add`, `edit`, or `delete`",
 
 	// Expenses
-	"expense_add_usage":           "❌ Usage: `/add <amount> <description> [category] [payment_method]`\n\nExamples:\n`/add 50.00 Groceries`\n`/add 25.50 Dinner credit_card_1`",
+	"expense_add_usage":           "❌ Usage: `/add <amount> <description> [category] [payment_method] [date]`\n\nExamples:\n`/add 50.00 Groceries`\n`/add 25.50 Dinner credit_card_1`\n`/add 30.00 Lunch 2024-01-15`\n\nDate can be in formats: 2024-01-15, 15/01/2024, etc.",
 	"expense_invalid_amount":      "❌ Invalid amount. Please provide a positive number.",
 	"expense_added":               "✅ Expense added!\n\nAmount: %s\nDescription: %s\n",
 	"expense_category":            "Category: %s\n",

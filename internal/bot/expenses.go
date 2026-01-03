@@ -49,12 +49,24 @@ func (h *Handler) handleAddExpense(handler *Handler, message *tgbotapi.Message, 
 	category := ""
 	paymentMethodName := ""
 	spenderArg := ""
+	expenseDate := time.Now()
 
-	// Parse optional arguments in order: [category] [payment_method] [spender]
-	// Spender is always the last optional argument
+	// Parse optional arguments in order: [category] [payment_method] [spender] [date]
+	// Date is checked first (if it's a valid date), then spender, then payment method, then category
 	argIndex := 2
+	
+	// First, check if the last argument is a valid date
 	if len(argsParts) > argIndex {
-		// Check if last argument is a spender identifier
+		lastArg := argsParts[len(argsParts)-1]
+		if parsedDate, err := utils.ParseDate(lastArg); err == nil {
+			// Valid date found, use it and remove from argsParts
+			expenseDate = parsedDate
+			argsParts = argsParts[:len(argsParts)-1]
+		}
+	}
+	
+	// Then check if last argument is a spender identifier
+	if len(argsParts) > argIndex {
 		lastArg := strings.ToLower(argsParts[len(argsParts)-1])
 		if lastArg == "user1" || lastArg == "user2" || lastArg == "partner" || lastArg == "pareja" {
 			spenderArg = argsParts[len(argsParts)-1]
@@ -136,7 +148,6 @@ func (h *Handler) handleAddExpense(handler *Handler, message *tgbotapi.Message, 
 		}
 	}
 
-	expenseDate := time.Now()
 	expense, err := handler.expenseService.CreateExpense(
 		lobby.ID,
 		spenderID, // Use the determined spender ID
@@ -170,6 +181,7 @@ func (h *Handler) handleAddExpense(handler *Handler, message *tgbotapi.Message, 
 			utils.FormatDate(expense.BillingPeriodStart.Time),
 			utils.FormatDate(expense.BillingPeriodEnd.Time))
 	}
+	msg += translator.T("expense_list_date", utils.FormatDate(expense.ExpenseDate))
 
 	handler.sendMessage(message.Chat.ID, msg)
 }

@@ -113,7 +113,7 @@ Para más detalles, usá cada comando sin argumentos para ver su uso.`,
 	"payment_method_unknown_action":   "❌ Acción desconocida. Usá: `add`, `edit`, o `delete`",
 
 	// Expenses
-	"expense_add_usage":           "❌ Uso: `/add <monto> <descripción> [categoría] [método_pago]`\n\nEjemplos:\n`/add 50.00 Supermercado`\n`/add 25.50 Cena tarjeta_1`",
+	"expense_add_usage":           "❌ Uso: `/add <monto> <descripción> [categoría] [método_pago] [fecha]`\n\nEjemplos:\n`/add 50.00 Supermercado`\n`/add 25.50 Cena tarjeta_1`\n`/add 30.00 Almuerzo 2024-01-15`\n\nLa fecha puede ser en formato: 2024-01-15, 15/01/2024, etc.",
 	"expense_invalid_amount":      "❌ Monto inválido. Por favor proporcioná un número positivo.",
 	"expense_added":               "✅ ¡Gasto agregado!\n\nMonto: %s\nDescripción: %s\n",
 	"expense_category":            "Categoría: %s\n",
