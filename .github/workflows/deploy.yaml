@@ -1,0 +1,29 @@
+name: Docker Build & Push
+on:
+  push:
+    branches: [ main ] # This triggers the build whenever you push to the main branch
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # This ensures the image is tagged correctly for your account
+          tags: ghcr.io/facusaldaa/botgastospareja:latest
