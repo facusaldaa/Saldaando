@@ -3,7 +3,9 @@ package service
 import (
 	"botGastosPareja/internal/database"
 	"botGastosPareja/pkg/utils"
+	"context"
 	"fmt"
+	"log"
 	"sort"
 	"time"
 )
@@ -42,6 +44,7 @@ type SpendingSpike struct {
 type AnalysisService struct {
 	db            *database.DB
 	expenseService *ExpenseService
+	llmService    LLMService // Optional, for AI-powered analysis
 }
 
 // NewAnalysisService creates a new analysis service
@@ -50,6 +53,11 @@ func NewAnalysisService(db *database.DB, expenseService *ExpenseService) *Analys
 		db:            db,
 		expenseService: expenseService,
 	}
+}
+
+// SetLLMService sets the LLM service for AI-powered analysis
+func (s *AnalysisService) SetLLMService(llmService LLMService) {
+	s.llmService = llmService
 }
 
 // AnalyzeMonthly compares current month with previous month
@@ -161,5 +169,145 @@ func (s *AnalysisService) AnalyzeMonthly(lobbyID int64) (*AnalysisResult, error)
 	})
 
 	return result, nil
+}
+
+// AIAnalysisResult represents AI-enhanced analysis results
+type AIAnalysisResult struct {
+	*AnalysisResult
+	AIInsights *AIAnalysisInsights
+}
+
+// AIAnalysisInsights represents AI-generated insights
+type AIAnalysisInsights struct {
+	Narrative          string
+	Patterns           []AIPattern
+	Anomalies          []AIAnomaly
+	Recommendations    []AIRecommendation
+	BehavioralInsights []AIBehavioralInsight
+}
+
+// AIPattern represents a detected pattern
+type AIPattern struct {
+	Type        string
+	Description string
+	Category    string
+	Amount      float64
+	Change      float64
+}
+
+// AIAnomaly represents a detected anomaly
+type AIAnomaly struct {
+	Type        string
+	Description string
+	ExpenseID   int64
+	Severity    string
+}
+
+// AIRecommendation represents a recommendation
+type AIRecommendation struct {
+	Type        string
+	Description string
+	Action      string
+	Priority    string
+}
+
+// AIBehavioralInsight represents a behavioral insight
+type AIBehavioralInsight struct {
+	Type        string
+	Description string
+	Data        map[string]interface{}
+}
+
+// AnalyzeWithAI performs analysis with AI-powered insights
+func (s *AnalysisService) AnalyzeWithAI(lobbyID int64) (*AIAnalysisResult, error) {
+	// Get basic statistical analysis
+	basicResult, err := s.AnalyzeMonthly(lobbyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get basic analysis: %w", err)
+	}
+
+	// Get lobby info
+	lobbyService := NewLobbyService(s.db)
+	lobby, err := lobbyService.GetLobbyByID(lobbyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get lobby: %w", err)
+	}
+	if lobby == nil {
+		return nil, fmt.Errorf("lobby not found")
+	}
+
+	// Get expenses for analysis
+	now := time.Now()
+	currentStart, currentEnd := utils.GetMonthStartEnd(now.Year(), now.Month())
+	expenses, err := s.expenseService.GetExpensesByLobby(lobbyID, &currentStart, &currentEnd, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get expenses: %w", err)
+	}
+
+	// Get AI insights if LLM service is available
+	var aiInsights *AIAnalysisInsights
+	if s.llmService != nil {
+		ctx := context.Background()
+		insights, err := s.llmService.GenerateAnalysisInsights(ctx, expenses, lobby, "monthly")
+		if err != nil {
+			log.Printf("Failed to get AI insights: %v", err)
+			// Continue without AI insights
+		} else {
+			// Convert LLM insights to service format
+			aiInsights = &AIAnalysisInsights{
+				Narrative: insights.Narrative,
+				Patterns:  make([]AIPattern, 0, len(insights.Patterns)),
+				Anomalies: make([]AIAnomaly, 0, len(insights.Anomalies)),
+				Recommendations: make([]AIRecommendation, 0, len(insights.Recommendations)),
+				BehavioralInsights: make([]AIBehavioralInsight, 0, len(insights.BehavioralInsights)),
+			}
+
+			for _, p := range insights.Patterns {
+				aiInsights.Patterns = append(aiInsights.Patterns, AIPattern{
+					Type:        p.Type,
+					Description: p.Description,
+					Category:    p.Category,
+					Amount:      p.Amount,
+					Change:      p.Change,
+				})
+			}
+
+			for _, a := range insights.Anomalies {
+				aiInsights.Anomalies = append(aiInsights.Anomalies, AIAnomaly{
+					Type:        a.Type,
+					Description: a.Description,
+					ExpenseID:   a.ExpenseID,
+					Severity:    a.Severity,
+				})
+			}
+
+			for _, r := range insights.Recommendations {
+				aiInsights.Recommendations = append(aiInsights.Recommendations, AIRecommendation{
+					Type:        r.Type,
+					Description: r.Description,
+					Action:      r.Action,
+					Priority:    r.Priority,
+				})
+			}
+
+			for _, b := range insights.BehavioralInsights {
+				aiInsights.BehavioralInsights = append(aiInsights.BehavioralInsights, AIBehavioralInsight{
+					Type:        b.Type,
+					Description: b.Description,
+					Data:        b.Data,
+				})
+			}
+
+			// Add summary stats if available
+			if insights.SummaryStats != nil {
+				// Summary stats are already in the basic result, but we can enhance with AI insights
+			}
+		}
+	}
+
+	return &AIAnalysisResult{
+		AnalysisResult: basicResult,
+		AIInsights:     aiInsights,
+	}, nil
 }
 

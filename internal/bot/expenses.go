@@ -14,10 +14,154 @@ import (
 // registerExpenseCommands registers expense-related commands
 func (h *Handler) registerExpenseCommands() {
 	h.router.RegisterCommand("add", h.handleAddExpense)
+	// /add_cuotas (installments) behind feature flag so we can roll back safely
+	if h.cuotasEnabled {
+		h.router.RegisterCommand("add_cuotas", h.handleAddCuotas)
+	}
 	h.router.RegisterCommand("list", h.handleListExpenses)
 	h.router.RegisterCommand("list_billing", h.handleListBillingExpenses)
 	h.router.RegisterCommand("delete", h.handleDeleteExpense)
 	h.router.RegisterCommand("edit", h.handleEditExpense)
+}
+
+// handleAddCuotas handles the /add_cuotas command (installments)
+// Usage: /add_cuotas <total_amount> <description> <installments> [category] [payment_method] [spender] [date]
+func (h *Handler) handleAddCuotas(handler *Handler, message *tgbotapi.Message, args string) {
+	userID := message.From.ID
+	translator := handler.getTranslator(userID)
+
+	// Get user's lobby for this specific chat (group/private)
+	lobby, err := handler.getLobbyForMessage(message)
+	if err != nil || lobby == nil {
+		handler.sendTranslatedMessage(userID, message.Chat.ID, "error_lobby_not_found")
+		return
+	}
+
+	argsParts := parseCommandArgs(args)
+	if len(argsParts) < 3 {
+		handler.sendTranslatedMessage(userID, message.Chat.ID, "expense_add_cuotas_usage")
+		return
+	}
+
+	// Parse total amount
+	totalAmount, err := strconv.ParseFloat(argsParts[0], 64)
+	if err != nil || totalAmount <= 0 {
+		handler.sendTranslatedMessage(userID, message.Chat.ID, "expense_invalid_amount")
+		return
+	}
+
+	description := argsParts[1]
+
+	// Parse installments count
+	installments, err := strconv.ParseInt(argsParts[2], 10, 64)
+	if err != nil || installments < 2 {
+		handler.sendTranslatedMessage(userID, message.Chat.ID, "expense_invalid_installments")
+		return
+	}
+
+	category := ""
+	paymentMethodName := ""
+	spenderArg := ""
+	purchaseDate := time.Now()
+
+	// Remaining args start after amount, description, installments
+	rest := argsParts[3:]
+
+	// From the end: optional date, then optional spender
+	if len(rest) > 0 {
+		last := rest[len(rest)-1]
+		if parsedDate, err := utils.ParseDate(last); err == nil {
+			purchaseDate = parsedDate
+			rest = rest[:len(rest)-1]
+		}
+	}
+	if len(rest) > 0 {
+		lastLower := strings.ToLower(rest[len(rest)-1])
+		if lastLower == "user1" || lastLower == "user2" || lastLower == "partner" || lastLower == "pareja" {
+			spenderArg = rest[len(rest)-1]
+			rest = rest[:len(rest)-1]
+		} else if _, err := strconv.ParseInt(rest[len(rest)-1], 10, 64); err == nil && len(rest[len(rest)-1]) > 3 {
+			// Telegram ID
+			spenderArg = rest[len(rest)-1]
+			rest = rest[:len(rest)-1]
+		}
+	}
+
+	// Now parse from the front: [category] [payment_method]
+	if len(rest) > 0 {
+		category = rest[0]
+	}
+	if len(rest) > 1 {
+		paymentMethodName = rest[1]
+	}
+
+	// Determine spender
+	spenderID := userID
+	if spenderArg != "" {
+		spenderArgLower := strings.ToLower(spenderArg)
+		if spenderArgLower == "user2" || spenderArgLower == "partner" || spenderArgLower == "pareja" {
+			if lobby.User2TelegramID != 0 {
+				spenderID = lobby.User2TelegramID
+			} else {
+				handler.sendTranslatedMessage(userID, message.Chat.ID, "waiting_partner")
+				return
+			}
+		} else if spenderArgLower == "user1" {
+			spenderID = lobby.User1TelegramID
+		} else if parsedID, err := strconv.ParseInt(spenderArg, 10, 64); err == nil {
+			if parsedID == lobby.User1TelegramID || parsedID == lobby.User2TelegramID {
+				spenderID = parsedID
+			} else {
+				handler.sendTranslatedMessage(userID, message.Chat.ID, "error_invalid_user_id")
+				return
+			}
+		}
+	}
+
+	// Payment method (recommended/required for credit card installments)
+	var paymentMethodID *int64
+	if paymentMethodName != "" {
+		methods, err := handler.paymentMethodService.GetPaymentMethodsByLobby(lobby.ID, true)
+		if err == nil {
+			for _, method := range methods {
+				if strings.EqualFold(method.Name, paymentMethodName) {
+					paymentMethodID = &method.ID
+					break
+				}
+			}
+		}
+		if paymentMethodID == nil {
+			handler.sendTranslatedMessage(userID, message.Chat.ID, "payment_method_not_found", paymentMethodName)
+			return
+		}
+	}
+
+	expenses, err := handler.expenseService.CreateInstallmentExpenses(
+		lobby.ID,
+		spenderID,
+		totalAmount,
+		description,
+		category,
+		purchaseDate,
+		paymentMethodID,
+		installments,
+	)
+	if err != nil {
+		handler.sendTranslatedMessage(userID, message.Chat.ID, "expense_add_error", err)
+		return
+	}
+
+	// Confirmation: show first installment + summary
+	first := expenses[0]
+	msg := translator.T(
+		"expense_cuotas_added",
+		utils.FormatCurrency(totalAmount),
+		description,
+		installments,
+		utils.FormatDate(purchaseDate),
+		first.ID,
+	)
+	handler.sendMessage(message.Chat.ID, msg)
 }
 
 // handleAddExpense handles the /add command
