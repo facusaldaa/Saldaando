@@ -37,8 +37,8 @@ spec:
             - name: TELEGRAM_BOT_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "botgastospareja.fullname" . }}-secrets
-                  key: telegram-bot-token
+                  name: botgastospareja-secrets
+                  key: telegramBotToken
             - name: DB_PATH
               value: "{{ .Values.persistence.mountPath }}/bot.db"
             - name: LOG_LEVEL

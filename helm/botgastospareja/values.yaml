@@ -55,7 +55,7 @@ tolerations: []
 affinity: {}
 
 secrets:
-  telegramBotToken: "8516938494:AAE3VIV2SFd_942hVtg306uBaG0zbUqDe6I" # Base64 encoded token or plain text (will be encoded)
+  existingSecret: "botgastospareja-secrets"
 
 autoscaling:
   enabled: false
