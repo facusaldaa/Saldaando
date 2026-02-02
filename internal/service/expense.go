@@ -5,6 +5,7 @@ import (
 	"botGastosPareja/pkg/utils"
 	"database/sql"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -21,6 +22,21 @@ func NewExpenseService(db *database.DB) *ExpenseService {
 
 // CreateExpense creates a new expense
 func (s *ExpenseService) CreateExpense(lobbyID int64, spenderTelegramID int64, amount float64, description string, category string, expenseDate time.Time, paymentMethodID *int64) (*database.Expense, error) {
+	return s.createExpenseInternal(lobbyID, spenderTelegramID, amount, description, category, expenseDate, paymentMethodID, nil, nil, nil)
+}
+
+func (s *ExpenseService) createExpenseInternal(
+	lobbyID int64,
+	spenderTelegramID int64,
+	amount float64,
+	description string,
+	category string,
+	expenseDate time.Time,
+	paymentMethodID *int64,
+	installmentGroupID *string,
+	installmentNumber *int64,
+	installmentTotal *int64,
+) (*database.Expense, error) {
 	conn := s.db.GetConn()
 
 	var billingPeriodStart, billingPeriodEnd sql.NullTime
@@ -54,10 +70,25 @@ func (s *ExpenseService) CreateExpense(lobbyID int64, spenderTelegramID int64, a
 		pmIDNull = sql.NullInt64{Int64: *paymentMethodID, Valid: true}
 	}
 
+	var instGroupNull sql.NullString
+	if installmentGroupID != nil && *installmentGroupID != "" {
+		instGroupNull = sql.NullString{String: *installmentGroupID, Valid: true}
+	}
+	var instNumNull sql.NullInt64
+	if installmentNumber != nil && *installmentNumber > 0 {
+		instNumNull = sql.NullInt64{Int64: *installmentNumber, Valid: true}
+	}
+	var instTotalNull sql.NullInt64
+	if installmentTotal != nil && *installmentTotal > 0 {
+		instTotalNull = sql.NullInt64{Int64: *installmentTotal, Valid: true}
+	}
+
 	query := `INSERT INTO expenses 
 	          (lobby_id, spender_telegram_id, payment_method_id, amount, description, 
-	           category, expense_date, billing_period_start, billing_period_end, created_at)
-	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	           category, expense_date, billing_period_start, billing_period_end,
+	           installment_group_id, installment_number, installment_total,
+	           created_at)
+	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	now := time.Now()
 	result, err := conn.Exec(query,
@@ -70,6 +101,9 @@ func (s *ExpenseService) CreateExpense(lobbyID int64, spenderTelegramID int64, a
 		expenseDate,
 		billingPeriodStart,
 		billingPeriodEnd,
+		instGroupNull,
+		instNumNull,
+		instTotalNull,
 		now,
 	)
 	if err != nil {
@@ -92,8 +126,74 @@ func (s *ExpenseService) CreateExpense(lobbyID int64, spenderTelegramID int64, a
 		ExpenseDate:       expenseDate,
 		BillingPeriodStart: billingPeriodStart,
 		BillingPeriodEnd:   billingPeriodEnd,
+		InstallmentGroupID: instGroupNull,
+		InstallmentNumber:  instNumNull,
+		InstallmentTotal:   instTotalNull,
 		CreatedAt:         now,
 	}, nil
+}
+
+// CreateInstallmentExpenses creates N monthly expenses (cuotas) tied by installment_group_id.
+// It splits amount across installments; last installment is adjusted to match total.
+func (s *ExpenseService) CreateInstallmentExpenses(
+	lobbyID int64,
+	spenderTelegramID int64,
+	totalAmount float64,
+	description string,
+	category string,
+	purchaseDate time.Time,
+	paymentMethodID *int64,
+	installments int64,
+) ([]*database.Expense, error) {
+	if installments <= 1 {
+		return nil, fmt.Errorf("installments must be >= 2")
+	}
+	if totalAmount <= 0 {
+		return nil, fmt.Errorf("amount must be > 0")
+	}
+
+	token, err := utils.GenerateInviteToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate installment group id: %w", err)
+	}
+	groupID := token[:8]
+
+	// split in "cents" to reduce float drift (still stored as float64)
+	totalCents := int64(math.Round(totalAmount * 100))
+	base := totalCents / installments
+	rem := totalCents % installments
+
+	var out []*database.Expense
+	for i := int64(1); i <= installments; i++ {
+		cents := base
+		if i <= rem {
+			cents++
+		}
+		amt := float64(cents) / 100.0
+		instDate := purchaseDate.AddDate(0, int(i-1), 0)
+
+		instDesc := fmt.Sprintf("%s (%d/%d)", description, i, installments)
+		instNum := i
+		instTotal := installments
+
+		exp, err := s.createExpenseInternal(
+			lobbyID,
+			spenderTelegramID,
+			amt,
+			instDesc,
+			category,
+			instDate,
+			paymentMethodID,
+			&groupID,
+			&instNum,
+			&instTotal,
+		)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, exp)
+	}
+	return out, nil
 }
 
 // GetExpensesByLobby gets expenses for a lobby with optional filters
@@ -102,7 +202,7 @@ func (s *ExpenseService) GetExpensesByLobby(lobbyID int64, startDate *time.Time,
 
 	query := `SELECT id, lobby_id, spender_telegram_id, payment_method_id, amount, 
 	          description, category, expense_date, billing_period_start, 
-	          billing_period_end, created_at
+	          billing_period_end, installment_group_id, installment_number, installment_total, created_at
 	          FROM expenses WHERE lobby_id = ?`
 
 	args := []interface{}{lobbyID}
@@ -144,6 +244,9 @@ func (s *ExpenseService) GetExpensesByLobby(lobbyID int64, startDate *time.Time,
 			&expense.ExpenseDate,
 			&expense.BillingPeriodStart,
 			&expense.BillingPeriodEnd,
+			&expense.InstallmentGroupID,
+			&expense.InstallmentNumber,
+			&expense.InstallmentTotal,
 			&expense.CreatedAt,
 		)
 		if err != nil {
@@ -161,7 +264,7 @@ func (s *ExpenseService) GetExpensesByBillingPeriod(lobbyID int64, paymentMethod
 
 	query := `SELECT id, lobby_id, spender_telegram_id, payment_method_id, amount, 
 	          description, category, expense_date, billing_period_start, 
-	          billing_period_end, created_at
+	          billing_period_end, installment_group_id, installment_number, installment_total, created_at
 	          FROM expenses 
 	          WHERE lobby_id = ? AND payment_method_id = ?
 	          AND billing_period_start >= ? AND billing_period_end <= ?
@@ -187,6 +290,9 @@ func (s *ExpenseService) GetExpensesByBillingPeriod(lobbyID int64, paymentMethod
 			&expense.ExpenseDate,
 			&expense.BillingPeriodStart,
 			&expense.BillingPeriodEnd,
+			&expense.InstallmentGroupID,
+			&expense.InstallmentNumber,
+			&expense.InstallmentTotal,
 			&expense.CreatedAt,
 		)
 		if err != nil {
@@ -205,7 +311,7 @@ func (s *ExpenseService) GetExpenseByID(id int64) (*database.Expense, error) {
 	var expense database.Expense
 	query := `SELECT id, lobby_id, spender_telegram_id, payment_method_id, amount, 
 	          description, category, expense_date, billing_period_start, 
-	          billing_period_end, created_at
+	          billing_period_end, installment_group_id, installment_number, installment_total, created_at
 	          FROM expenses WHERE id = ?`
 
 	err := conn.QueryRow(query, id).Scan(
@@ -219,6 +325,9 @@ func (s *ExpenseService) GetExpenseByID(id int64) (*database.Expense, error) {
 		&expense.ExpenseDate,
 		&expense.BillingPeriodStart,
 		&expense.BillingPeriodEnd,
+		&expense.InstallmentGroupID,
+		&expense.InstallmentNumber,
+		&expense.InstallmentTotal,
 		&expense.CreatedAt,
 	)
 

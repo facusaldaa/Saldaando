@@ -60,5 +60,8 @@ type Expense struct {
 	ExpenseDate        time.Time
 	BillingPeriodStart sql.NullTime
 	BillingPeriodEnd   sql.NullTime
+	InstallmentGroupID sql.NullString
+	InstallmentNumber  sql.NullInt64
+	InstallmentTotal   sql.NullInt64
 	CreatedAt          time.Time
 }

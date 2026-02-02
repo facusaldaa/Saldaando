@@ -209,5 +209,36 @@ func (db *DB) migrateAddColumns() error {
 		_, _ = conn.Exec(`CREATE INDEX IF NOT EXISTS idx_lobbies_invite_token ON lobbies(invite_token)`)
 	}
 
+	// ---- Expenses: installments metadata ----
+	// installment_group_id ties multiple rows created from a cuotas purchase
+	// installment_number is 1..installment_total
+	// installment_total is total number of installments
+	var instGroupCount int
+	_ = conn.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('expenses') WHERE name='installment_group_id'`).Scan(&instGroupCount)
+	if instGroupCount == 0 {
+		if _, err := conn.Exec(`ALTER TABLE expenses ADD COLUMN installment_group_id TEXT`); err != nil {
+			fmt.Printf("Warning: Could not add installment_group_id column: %v\n", err)
+		}
+	}
+
+	var instNumCount int
+	_ = conn.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('expenses') WHERE name='installment_number'`).Scan(&instNumCount)
+	if instNumCount == 0 {
+		if _, err := conn.Exec(`ALTER TABLE expenses ADD COLUMN installment_number INTEGER`); err != nil {
+			fmt.Printf("Warning: Could not add installment_number column: %v\n", err)
+		}
+	}
+
+	var instTotalCount int
+	_ = conn.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('expenses') WHERE name='installment_total'`).Scan(&instTotalCount)
+	if instTotalCount == 0 {
+		if _, err := conn.Exec(`ALTER TABLE expenses ADD COLUMN installment_total INTEGER`); err != nil {
+			fmt.Printf("Warning: Could not add installment_total column: %v\n", err)
+		}
+	}
+
+	// Index for faster group operations (delete/list cuotas)
+	_, _ = conn.Exec(`CREATE INDEX IF NOT EXISTS idx_expenses_installment_group ON expenses(installment_group_id)`)
+
 	return nil
 }
