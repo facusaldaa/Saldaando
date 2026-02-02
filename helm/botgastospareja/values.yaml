@@ -61,7 +61,7 @@ secrets:
 llm:
   enabled: true
   glmModelName: "GLM-4-32B-0414-128K"
-  glmBaseURL: "https://open.z.ai/api/paas/v4"
+  glmBaseURL: "https://api.z.ai/v1"
   glmTemperature: "0.3"
   glmFallbackToHF: "true"
   huggingfaceApiKey: false  # Set to true if you have a HuggingFace API key
