@@ -1,4 +1,4 @@
-# Couple Expense Tracker Bot
+# Expense Tracker 
 
 A Telegram bot for couples to track shared expenses, calculate settlements, and analyze spending patterns. Supports both separate and shared account scenarios with credit card billing cycle tracking.
 
