@@ -39,18 +39,19 @@ spec:
                 secretKeyRef:
                   name: botgastospareja-secrets
                   key: telegramBotToken
+            - name: GLM_API_KEY
+              valueFrom: # Added this missing line
+                secretKeyRef:
+                  name: botgastospareja-secrets
+                  key: glmApiKey
             - name: DB_PATH
               value: "{{ .Values.persistence.mountPath }}/bot.db"
             - name: LOG_LEVEL
               value: "info"
             {{- if .Values.llm.enabled }}
             - name: ENABLE_LLM_FEATURES
-              value: "true"
-            - name: GLM_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.existingSecret }}
-                  key: glmApiKey
+              value: "{{ .Values.llm.enabled }}"
+            # Removed the duplicate GLM_API_KEY block that was here
             - name: GLM_MODEL_NAME
               value: "{{ .Values.llm.glmModelName }}"
             - name: GLM_BASE_URL
@@ -63,7 +64,7 @@ spec:
             - name: HUGGINGFACE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.secrets.existingSecret }}
+                  name: botgastospareja-secrets # Use the manual secret name
                   key: huggingfaceApiKey
             {{- end }}
             - name: HUGGINGFACE_MODEL
@@ -71,29 +72,4 @@ spec:
             {{- end }}
             - name: ENABLE_CUOTAS
               value: "{{ .Values.features.enableCuotas }}"
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          volumeMounts:
-            {{- if .Values.persistence.enabled }}
-            - name: data
-              mountPath: {{ .Values.persistence.mountPath }}
-            {{- end }}
-      volumes:
-        {{- if .Values.persistence.enabled }}
-        - name: data
-          persistentVolumeClaim:
-            claimName: {{ include "botgastospareja.fullname" . }}-pvc
-        {{- end }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
 
