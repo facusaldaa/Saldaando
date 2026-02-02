@@ -18,6 +18,8 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o botGastosPareja .
 # Final stage
 FROM alpine:latest
 
+LABEL org.opencontainers.image.source=https://github.com/facusaldaa/Saldaando
+ 
 RUN apk --no-cache add ca-certificates sqlite
 
 WORKDIR /root/

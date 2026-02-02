@@ -6,9 +6,10 @@ image:
   # Use semantic versioning (e.g., "1.0.0", "1.0.1") or git commit SHA for rollback capability
   # Falls back to Chart.AppVersion if not set. Update this when deploying new versions.
   # Example: tag: "1.0.0" or tag: "v1.0.0" or tag: "abc1234"
-  tag: "0.1.1" # Matches Chart.AppVersion - update when releasing new versions
+  tag: "0.1.2" # Matches Chart.AppVersion - update when releasing new versions
 
-imagePullSecrets: []
+imagePullSecrets: 
+  - name: ghcr-secret
 nameOverride: ""
 fullnameOverride: ""
 
@@ -54,7 +55,7 @@ tolerations: []
 affinity: {}
 
 secrets:
-  telegramBotToken: "" # Base64 encoded token or plain text (will be encoded)
+  telegramBotToken: "8516938494:AAE3VIV2SFd_942hVtg306uBaG0zbUqDe6I" # Base64 encoded token or plain text (will be encoded)
 
 autoscaling:
   enabled: false
