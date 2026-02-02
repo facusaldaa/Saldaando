@@ -43,6 +43,36 @@ spec:
               value: "{{ .Values.persistence.mountPath }}/bot.db"
             - name: LOG_LEVEL
               value: "info"
+            {{- if .Values.llm.enabled }}
+            - name: ENABLE_LLM_FEATURES
+              value: "{{ .Values.llm.enabled }}"
+            - name: GLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: glmApiKey
+                  optional: true
+            - name: GLM_MODEL_NAME
+              value: "{{ .Values.llm.glmModelName }}"
+            - name: GLM_BASE_URL
+              value: "{{ .Values.llm.glmBaseURL }}"
+            - name: GLM_TEMPERATURE
+              value: "{{ .Values.llm.glmTemperature }}"
+            - name: GLM_FALLBACK_TO_HF
+              value: "{{ .Values.llm.glmFallbackToHF }}"
+            {{- if .Values.llm.huggingfaceApiKey }}
+            - name: HUGGINGFACE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: huggingfaceApiKey
+                  optional: true
+            {{- end }}
+            - name: HUGGINGFACE_MODEL
+              value: "{{ .Values.llm.huggingfaceModel }}"
+            {{- end }}
+            - name: ENABLE_CUOTAS
+              value: "{{ .Values.features.enableCuotas }}"
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
