@@ -57,5 +57,19 @@ affinity: {}
 secrets:
   existingSecret: "botgastospareja-secrets"
 
+# LLM Configuration for natural language expense parsing
+llm:
+  enabled: true
+  glmModelName: "glm-4"
+  glmBaseURL: "https://open.bigmodel.cn/api/paas/v4"
+  glmTemperature: "0.3"
+  glmFallbackToHF: "true"
+  huggingfaceApiKey: false  # Set to true if you have a HuggingFace API key
+  huggingfaceModel: "mistralai/Mistral-7B-Instruct-v0.2"
+
+# Feature flags
+features:
+  enableCuotas: true
+
 autoscaling:
   enabled: false
