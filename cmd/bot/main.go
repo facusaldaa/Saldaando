@@ -9,6 +9,8 @@ import (
 	"botGastosPareja/internal/bot"
 	"botGastosPareja/internal/config"
 	"botGastosPareja/internal/database"
+	"botGastosPareja/internal/service"
+	llmPkg "botGastosPareja/internal/service/llm"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -35,8 +37,22 @@ func main() {
 
 	log.Printf("Authorized on account %s", telegramBot.Self.UserName)
 
+	// Initialize LLM service (optional, will be nil if not configured or disabled)
+	var llmSvc service.LLMService
+	if cfg.EnableLLMFeatures && cfg.GLMAPIKey != "" {
+		llmClient, err := llmPkg.NewLLMClient(cfg)
+		if err != nil {
+			log.Printf("Warning: Failed to initialize LLM service: %v. Natural language parsing will be disabled.", err)
+		} else {
+			llmSvc = service.NewLLMService(llmClient)
+			log.Println("LLM service initialized")
+		}
+	} else {
+		log.Println("LLM features disabled or GLM_API_KEY not set. Natural language parsing disabled.")
+	}
+
 	// Create bot handler (commands are registered automatically)
-	handler := bot.NewHandler(telegramBot, db)
+	handler := bot.NewHandler(telegramBot, db, llmSvc, cfg.EnableLLMFeatures, cfg.EnableCuotas)
 
 	// Register commands with Telegram API
 	if err := handler.RegisterTelegramCommands(); err != nil {
