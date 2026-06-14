@@ -17,6 +17,7 @@ type Config struct {
 	GLMBaseURL        string
 	GLMTemperature    float64
 	GLMFallbackToHF   bool
+	GLMVisionModel    string `json:"glm_vision_model,omitempty"` // Vision model for receipt OCR (e.g., "glm-4v-plus")
 	HuggingFaceAPIKey string
 	HuggingFaceModel  string
 	EnableLLMFeatures bool
@@ -37,6 +38,7 @@ func Load() (*Config, error) {
 		GLMBaseURL:        getEnv("GLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4"),
 		GLMTemperature:    getEnvFloat("GLM_TEMPERATURE", 0.3),
 		GLMFallbackToHF:   getEnvBool("GLM_FALLBACK_TO_HF", true),
+		GLMVisionModel:    getEnv("GLM_VISION_MODEL", ""),
 		HuggingFaceAPIKey: getEnv("HUGGINGFACE_API_KEY", ""),
 		HuggingFaceModel:  getEnv("HUGGINGFACE_MODEL", "mistralai/Mistral-7B-Instruct-v0.2"),
 		EnableLLMFeatures: getEnvBool("ENABLE_LLM_FEATURES", true),

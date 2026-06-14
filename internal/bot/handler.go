@@ -240,10 +240,11 @@ func (h *Handler) HandleUpdate(update tgbotapi.Update) {
 	// Handle photo messages (receipt OCR)
 	hasPhoto := update.Message.Photo != nil && len(update.Message.Photo) > 0
 	hasImageDoc := update.Message.Document != nil && (update.Message.Document.MimeType == "image/jpeg" || update.Message.Document.MimeType == "image/png" || update.Message.Document.MimeType == "image/webp")
+	hasPDF := update.Message.Document != nil && update.Message.Document.MimeType == "application/pdf"
 
-	log.Printf("DEBUG msg Parse: Text=%q Caption=%q Photo=%d Doc=%v", update.Message.Text, update.Message.Caption, len(update.Message.Photo), update.Message.Document != nil)
+	log.Printf("DEBUG msg Parse: Text=%q Caption=%q Photo=%d Doc=%v DocMime=%q", update.Message.Text, update.Message.Caption, len(update.Message.Photo), update.Message.Document != nil, getDocMime(update.Message.Document))
 
-	if hasPhoto || hasImageDoc {
+	if hasPhoto || hasImageDoc || hasPDF {
 		h.handlePhoto(update.Message)
 		return
 	}
