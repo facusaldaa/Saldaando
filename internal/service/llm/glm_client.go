@@ -124,6 +124,7 @@ func (c *GLMClient) ParseExpenseFromImage(ctx context.Context, imageData []byte,
 	if visionModel == "" {
 		visionModel = c.modelName
 	}
+	log.Printf("Vision model: %q (c.visionModel=%q, fallback to c.modelName=%q)", visionModel, c.visionModel, c.modelName)
 
 	// Build a receipt OCR prompt
 	prompt := buildReceiptOCRPrompt(context)
