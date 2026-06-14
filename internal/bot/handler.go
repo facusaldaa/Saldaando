@@ -237,6 +237,21 @@ func (h *Handler) HandleUpdate(update tgbotapi.Update) {
 		return
 	}
 
+	// Handle photo messages (receipt OCR)
+	if update.Message.Photo != nil && len(update.Message.Photo) > 0 {
+		h.handlePhoto(update.Message)
+		return
+	}
+
+	// Handle image documents
+	if update.Message.Document != nil {
+		mime := update.Message.Document.MimeType
+		if mime == "image/jpeg" || mime == "image/png" || mime == "image/webp" {
+			h.handlePhoto(update.Message)
+			return
+		}
+	}
+
 	// Handle regular messages (for interactive flows)
 	h.handleMessage(update.Message)
 }

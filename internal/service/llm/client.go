@@ -8,13 +8,6 @@ import (
 	"log"
 )
 
-// LLMProvider defines the interface for LLM providers
-type LLMProvider interface {
-	ParseExpense(ctx context.Context, message string, context ExpenseContext) (*ParsedExpense, error)
-	AnalyzeExpenses(ctx context.Context, expenses []*database.Expense, lobby *database.Lobby, analysisType string) (*AnalysisInsights, error)
-	HealthCheck(ctx context.Context) error
-}
-
 // FallbackProvider wraps a primary provider with a fallback
 type FallbackProvider struct {
 	primary   LLMProvider
@@ -57,6 +50,16 @@ func (f *FallbackProvider) ParseExpense(ctx context.Context, message string, con
 	if err != nil && f.useFallback && f.fallback != nil {
 		log.Printf("GLM parsing failed, trying HuggingFace fallback: %v", err)
 		return f.fallback.ParseExpense(ctx, message, context)
+	}
+	return result, err
+}
+
+// ParseExpenseFromImage attempts to parse expense from image using primary provider
+func (f *FallbackProvider) ParseExpenseFromImage(ctx context.Context, imageData []byte, context ExpenseContext) (*ParsedExpense, error) {
+	result, err := f.primary.ParseExpenseFromImage(ctx, imageData, context)
+	if err != nil && f.useFallback && f.fallback != nil {
+		log.Printf("GLM vision parsing failed, trying HuggingFace fallback: %v", err)
+		return f.fallback.ParseExpenseFromImage(ctx, imageData, context)
 	}
 	return result, err
 }

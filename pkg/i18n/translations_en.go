@@ -201,6 +201,12 @@ For more details, use each command without arguments to see its usage.`,
 	"language_usage":   "❌ Usage: `/language <code>`\n\nAvailable languages:\n%s",
 	"language_invalid": "❌ Invalid language code. Available: %s",
 
+	// Receipt OCR
+	"receipt_llm_disabled": "❌ Receipt OCR is not available at this time.",
+	"receipt_processing":   "⏳ Analyzing receipt...",
+	"receipt_failed":       "❌ Couldn't read the receipt. Make sure the photo is clear and the amount is visible.\n\nYou can use /add to add the expense manually.",
+	"receipt_no_amount":    "❌ Couldn't find a valid amount in the receipt. Use /add to add it manually.",
+
 	// Examples
 	"examples": `📚 *COMMAND EXAMPLES - COUPLE EXPENSE TRACKER BOT*
 
