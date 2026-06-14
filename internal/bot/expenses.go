@@ -90,6 +90,9 @@ func (h *Handler) handleAddCuotas(handler *Handler, message *tgbotapi.Message, a
 	// Now parse from the front: [category] [payment_method]
 	if len(rest) > 0 {
 		category = rest[0]
+		if canonical, ok := utils.NormalizeCategory(category); ok {
+			category = canonical
+		}
 	}
 	if len(rest) > 1 {
 		paymentMethodName = rest[1]
@@ -226,6 +229,10 @@ func (h *Handler) handleAddExpense(handler *Handler, message *tgbotapi.Message, 
 	// Parse category and payment method from remaining args
 	if len(argsParts) > argIndex {
 		category = argsParts[argIndex]
+		// Normalize category to canonical form
+		if canonical, ok := utils.NormalizeCategory(category); ok {
+			category = canonical
+		}
 		argIndex++
 	}
 	if len(argsParts) > argIndex {
@@ -435,7 +442,7 @@ func (h *Handler) handleListExpenses(handler *Handler, message *tgbotapi.Message
 	}
 
 	msg += translator.T("expense_list_total", utils.FormatCurrency(total))
-	handler.sendMessage(message.Chat.ID, msg)
+	handler.dynamicMsgs.SendOrEdit(handler.bot, message.Chat.ID, MsgTypeList, msg, nil)
 }
 
 // handleListBillingExpenses handles the /list_billing command

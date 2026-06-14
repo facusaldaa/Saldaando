@@ -64,7 +64,7 @@ func (h *Handler) handleSummary(handler *Handler, message *tgbotapi.Message, arg
 	}
 
 	msg := h.formatSummary(expenses, lobby, startDate, endDate, translator)
-	handler.sendMessage(message.Chat.ID, msg)
+	handler.dynamicMsgs.SendOrEdit(handler.bot, message.Chat.ID, MsgTypeSummary, msg, nil)
 }
 
 // handleSummaryBilling handles the /summary_billing command
@@ -134,7 +134,7 @@ func (h *Handler) handleSummaryBilling(handler *Handler, message *tgbotapi.Messa
 	}
 
 	msg := h.formatSummary(expenses, lobby, &periodStart, &periodEnd, translator)
-	handler.sendMessage(message.Chat.ID, msg)
+	handler.dynamicMsgs.SendOrEdit(handler.bot, message.Chat.ID, MsgTypeSummary, msg, nil)
 }
 
 // formatSummary formats a summary report
@@ -155,8 +155,8 @@ func (h *Handler) formatSummary(expenses []*database.Expense, lobby *database.Lo
 	}
 
 	// Get user names
-	user1Name := h.getUserDisplayName(lobby.User1TelegramID, "Usuario 1")
-	user2Name := h.getUserDisplayName(lobby.User2TelegramID, "Usuario 2")
+	user1Name := h.getUserDisplayName(lobby.User1TelegramID)
+	user2Name := h.getUserDisplayName(lobby.User2TelegramID)
 
 	var total float64
 	user1Total := 0.0

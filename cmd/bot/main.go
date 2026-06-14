@@ -67,6 +67,7 @@ func main() {
 		handler.GetLobbyService(),
 		handler.GetSettlementService(),
 		handler.GetExpenseService(),
+		handler.GetUserService(),
 	)
 	scheduler.Start()
 	log.Println("Settlement scheduler started")

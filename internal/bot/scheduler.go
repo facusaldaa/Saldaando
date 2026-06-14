@@ -18,16 +18,18 @@ type SettlementScheduler struct {
 	lobbyService      *service.LobbyService
 	settlementService *service.SettlementService
 	expenseService    *service.ExpenseService
+	userService       *service.UserService
 	lastCheckDate     time.Time
 }
 
 // NewSettlementScheduler creates a new settlement scheduler
-func NewSettlementScheduler(bot *tgbotapi.BotAPI, lobbyService *service.LobbyService, settlementService *service.SettlementService, expenseService *service.ExpenseService) *SettlementScheduler {
+func NewSettlementScheduler(bot *tgbotapi.BotAPI, lobbyService *service.LobbyService, settlementService *service.SettlementService, expenseService *service.ExpenseService, userService *service.UserService) *SettlementScheduler {
 	return &SettlementScheduler{
 		bot:               bot,
 		lobbyService:      lobbyService,
 		settlementService: settlementService,
 		expenseService:    expenseService,
+		userService:       userService,
 		lastCheckDate:     time.Now(),
 	}
 }
@@ -123,7 +125,13 @@ func (s *SettlementScheduler) sendMonthlySettlements(now time.Time) {
 		msg := s.formatSettlementResultSimple(result, &startDate, &endDate, translator)
 		
 		// Add header indicating this is an automatic monthly settlement
-		header := "📅 *Monthly Settlement Report*\n" + utils.FormatMonth(prevMonth) + "\n\n"
+		lang := translator.GetLanguage()
+		var header string
+		if lang == i18n.LanguageSpanishAR {
+			header = "📅 *Resumen mensual de gastos*\n" + utils.FormatMonth(prevMonth) + "\n\n"
+		} else {
+			header = "📅 *Monthly Settlement Report*\n" + utils.FormatMonth(prevMonth) + "\n\n"
+		}
 		msg = header + msg
 
 		// Send to both users
@@ -154,41 +162,84 @@ func (s *SettlementScheduler) getAllActiveLobbies() ([]*database.Lobby, error) {
 
 // getTranslatorForLobby gets a translator for a lobby (uses first user's language)
 func (s *SettlementScheduler) getTranslatorForLobby(lobby *database.Lobby) *i18n.Translator {
-	// Use first user's language preference
-	// We need to access userService, but we don't have it - use a simple approach
-	// For now, default to English - we can improve this later
+	// Try first user's language preference
+	if s.userService != nil {
+		user, err := s.userService.GetUserByTelegramID(lobby.User1TelegramID)
+		if err == nil && user != nil && user.Language.Valid && user.Language.String != "" {
+			return i18n.NewTranslator(i18n.Language(user.Language.String))
+		}
+	}
 	return i18n.NewTranslator(i18n.LanguageEnglish)
 }
 
-// formatSettlementResultSimple formats a settlement result (simplified version)
+// formatSettlementResultSimple formats a settlement result (with i18n support).
 func (s *SettlementScheduler) formatSettlementResultSimple(result *service.SettlementResult, startDate, endDate *time.Time, translator *i18n.Translator) string {
-	periodStr := "Period"
+	lang := translator.GetLanguage()
+	isSpanish := lang == i18n.LanguageSpanishAR
+
+	periodStr := translator.T("summary_period")
 	if startDate != nil && endDate != nil {
-		periodStr = fmt.Sprintf("%s to %s",
-			utils.FormatDate(*startDate), utils.FormatDate(*endDate))
+		if isSpanish {
+			periodStr = fmt.Sprintf("%s a %s", utils.FormatDate(*startDate), utils.FormatDate(*endDate))
+		} else {
+			periodStr = fmt.Sprintf("%s to %s", utils.FormatDate(*startDate), utils.FormatDate(*endDate))
+		}
 	}
 
-	msg := fmt.Sprintf("Period: %s\n", periodStr)
-	msg += fmt.Sprintf("Account Type: %s\n", result.AccountType)
-	msg += fmt.Sprintf("Total Expenses: %s\n\n", utils.FormatCurrency(result.TotalExpenses))
+	var msg string
+	if isSpanish {
+		msg = fmt.Sprintf("Período: %s\n", periodStr)
+		msg += fmt.Sprintf("Tipo de cuenta: %s\n", result.AccountType)
+		msg += fmt.Sprintf("Total de gastos: %s\n\n", utils.FormatCurrency(result.TotalExpenses))
+	} else {
+		msg = fmt.Sprintf("Period: %s\n", periodStr)
+		msg += fmt.Sprintf("Account Type: %s\n", result.AccountType)
+		msg += fmt.Sprintf("Total Expenses: %s\n\n", utils.FormatCurrency(result.TotalExpenses))
+	}
 
-	msg += fmt.Sprintf("User 1 Spent: %s\n", utils.FormatCurrency(result.User1TotalSpent))
-	msg += fmt.Sprintf("User 2 Spent: %s\n\n", utils.FormatCurrency(result.User2TotalSpent))
+	if isSpanish {
+		msg += fmt.Sprintf("Usuario 1 gastó: %s\n", utils.FormatCurrency(result.User1TotalSpent))
+		msg += fmt.Sprintf("Usuario 2 gastó: %s\n\n", utils.FormatCurrency(result.User2TotalSpent))
+	} else {
+		msg += fmt.Sprintf("User 1 Spent: %s\n", utils.FormatCurrency(result.User1TotalSpent))
+		msg += fmt.Sprintf("User 2 Spent: %s\n\n", utils.FormatCurrency(result.User2TotalSpent))
+	}
 
 	if result.User1SalaryPercentage != 0.5 || result.User2SalaryPercentage != 0.5 || result.AccountType == "shared" {
-		msg += fmt.Sprintf("User 1 Expected (%.1f%%): %s\n", result.User1SalaryPercentage*100, utils.FormatCurrency(result.User1Expected))
-		msg += fmt.Sprintf("User 2 Expected (%.1f%%): %s\n\n", result.User2SalaryPercentage*100, utils.FormatCurrency(result.User2Expected))
+		if isSpanish {
+			msg += fmt.Sprintf("Esperado User 1 (%.1f%%): %s\n", result.User1SalaryPercentage*100, utils.FormatCurrency(result.User1Expected))
+			msg += fmt.Sprintf("Esperado User 2 (%.1f%%): %s\n\n", result.User2SalaryPercentage*100, utils.FormatCurrency(result.User2Expected))
+		} else {
+			msg += fmt.Sprintf("User 1 Expected (%.1f%%): %s\n", result.User1SalaryPercentage*100, utils.FormatCurrency(result.User1Expected))
+			msg += fmt.Sprintf("User 2 Expected (%.1f%%): %s\n\n", result.User2SalaryPercentage*100, utils.FormatCurrency(result.User2Expected))
+		}
 	} else {
 		expectedPerPerson := result.TotalExpenses / 2.0
-		msg += fmt.Sprintf("Expected per person: %s\n\n", utils.FormatCurrency(expectedPerPerson))
+		if isSpanish {
+			msg += fmt.Sprintf("Esperado por persona: %s\n\n", utils.FormatCurrency(expectedPerPerson))
+		} else {
+			msg += fmt.Sprintf("Expected per person: %s\n\n", utils.FormatCurrency(expectedPerPerson))
+		}
 	}
 
 	if result.User1Debt > 0 {
-		msg += fmt.Sprintf("➡️ User 1 owes User 2: %s\n", utils.FormatCurrency(result.User1Debt))
+		if isSpanish {
+			msg += fmt.Sprintf("➡️ User 1 le debe a User 2: %s\n", utils.FormatCurrency(result.User1Debt))
+		} else {
+			msg += fmt.Sprintf("➡️ User 1 owes User 2: %s\n", utils.FormatCurrency(result.User1Debt))
+		}
 	} else if result.User1Debt < 0 {
-		msg += fmt.Sprintf("➡️ User 2 owes User 1: %s\n", utils.FormatCurrency(-result.User1Debt))
+		if isSpanish {
+			msg += fmt.Sprintf("➡️ User 2 le debe a User 1: %s\n", utils.FormatCurrency(-result.User1Debt))
+		} else {
+			msg += fmt.Sprintf("➡️ User 2 owes User 1: %s\n", utils.FormatCurrency(-result.User1Debt))
+		}
 	} else {
-		msg += "✅ All settled!\n"
+		if isSpanish {
+			msg += "✅ Todo saldado!\n"
+		} else {
+			msg += "✅ All settled!\n"
+		}
 	}
 
 	return msg
