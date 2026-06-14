@@ -58,22 +58,19 @@ func (h *Handler) handlePhoto(message *tgbotapi.Message) {
 	translator := h.getTranslator(userID)
 	isSpanish := translator.GetLanguage() == i18n.LanguageSpanishAR
 
-	// Send "processing" message
-	processingMsg := "⏳"
-	if isSpanish {
-		processingMsg = "⏳ Analizando recibo..."
-	} else {
-		processingMsg = "⏳ Analyzing receipt..."
-	}
-	statusMsg := tgbotapi.NewMessage(message.Chat.ID, processingMsg)
-	sent, _ := h.bot.Send(statusMsg)
+	// React with 👀 to show we're processing
+	h.setReaction(message.Chat.ID, message.MessageID, "👀")
 
 	// Download the photo (pick largest available)
 	imageData, err := h.downloadPhoto(message)
 	if err != nil {
 		log.Printf("Failed to download photo: %v", err)
-		editMsg := tgbotapi.NewEditMessageText(message.Chat.ID, sent.MessageID, "❌ Error al descargar la imagen.")
-		h.bot.Send(editMsg)
+		h.setReaction(message.Chat.ID, message.MessageID, "❌")
+		if isSpanish {
+			h.sendMessage(message.Chat.ID, "❌ Error al descargar la imagen.")
+		} else {
+			h.sendMessage(message.Chat.ID, "❌ Error downloading the image.")
+		}
 		return
 	}
 
@@ -81,8 +78,12 @@ func (h *Handler) handlePhoto(message *tgbotapi.Message) {
 	expenseCtx, err := h.buildExpenseContext(lobby, userID)
 	if err != nil {
 		log.Printf("Failed to build expense context: %v", err)
-		editMsg := tgbotapi.NewEditMessageText(message.Chat.ID, sent.MessageID, "❌ Error interno.")
-		h.bot.Send(editMsg)
+		h.setReaction(message.Chat.ID, message.MessageID, "❌")
+		if isSpanish {
+			h.sendMessage(message.Chat.ID, "❌ Error interno.")
+		} else {
+			h.sendMessage(message.Chat.ID, "❌ Internal error.")
+		}
 		return
 	}
 
@@ -91,35 +92,28 @@ func (h *Handler) handlePhoto(message *tgbotapi.Message) {
 	parsed, err := h.llmService.ParseExpenseFromImage(context.Background(), imageData, expenseCtx)
 	if err != nil {
 		log.Printf("Vision OCR failed: %v", err)
+		h.setReaction(message.Chat.ID, message.MessageID, "❌")
 		if isSpanish {
-			editMsg := tgbotapi.NewEditMessageText(message.Chat.ID, sent.MessageID,
-				"❌ No pude leer el recibo. Asegurate de que la foto sea clara y tenga el monto visible.\n\nPodés usar /add para agregar el gasto manualmente.")
-			h.bot.Send(editMsg)
+			h.sendMessage(message.Chat.ID, "❌ No pude leer el recibo. Asegurate de que la foto sea clara y tenga el monto visible.\n\nPodés usar /add para agregar el gasto manualmente.")
 		} else {
-			editMsg := tgbotapi.NewEditMessageText(message.Chat.ID, sent.MessageID,
-				"❌ Couldn't read the receipt. Make sure the photo is clear and the amount is visible.\n\nYou can use /add to add the expense manually.")
-			h.bot.Send(editMsg)
+			h.sendMessage(message.Chat.ID, "❌ Couldn't read the receipt. Make sure the photo is clear and the amount is visible.\n\nYou can use /add to add the expense manually.")
 		}
 		return
 	}
 
 	// Validate parsed amount
 	if parsed.Amount <= 0 {
+		h.setReaction(message.Chat.ID, message.MessageID, "❌")
 		if isSpanish {
-			editMsg := tgbotapi.NewEditMessageText(message.Chat.ID, sent.MessageID,
-				"❌ No encontré un monto válido en el recibo. Podés usar /add para agregarlo manualmente.")
-			h.bot.Send(editMsg)
+			h.sendMessage(message.Chat.ID, "❌ No encontré un monto válido en el recibo. Podés usar /add para agregarlo manualmente.")
 		} else {
-			editMsg := tgbotapi.NewEditMessageText(message.Chat.ID, sent.MessageID,
-				"❌ Couldn't find a valid amount in the receipt. Use /add to add it manually.")
-			h.bot.Send(editMsg)
+			h.sendMessage(message.Chat.ID, "❌ Couldn't find a valid amount in the receipt. Use /add to add it manually.")
 		}
 		return
 	}
 
-	// Delete the "processing" message
-	deleteMsg := tgbotapi.NewDeleteMessage(message.Chat.ID, sent.MessageID)
-	h.bot.Send(deleteMsg)
+	// Success reaction — change 👀 to ✅
+	h.setReaction(message.Chat.ID, message.MessageID, "✅")
 
 	// Normalize category
 	if parsed.Category != "" {
@@ -178,8 +172,10 @@ func (h *Handler) handlePhoto(message *tgbotapi.Message) {
 	}
 	h.pendingExpenses[userID] = pending
 
-	// Show confirmation using the existing flow
-	h.showExpenseConfirmation(userID, message.Chat.ID, pending, translator)
+	// Show confirmation using the existing flow and store the message ID for in-place editing
+	confMsgID := h.showExpenseConfirmation(userID, message.Chat.ID, pending, translator)
+	pending.ConfirmationMessageID = confMsgID
+	h.pendingExpenses[userID] = pending
 }
 
 // downloadPhoto downloads the largest photo from a message, or converts a PDF to image
