@@ -92,3 +92,29 @@ jobs:
           tags: |
             ghcr.io/facusaldaa/botgastospareja:latest
             ghcr.io/facusaldaa/botgastospareja:${{ steps.get_version.outputs.VERSION }}
+
+  deploy:
+    name: Deploy to k3s
+    runs-on: self-hosted
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from Chart.yaml
+        id: get_version
+        run: |
+          VERSION=$(grep '^version:' helm/botgastospareja/Chart.yaml | awk '{print $2}')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update deployment image
+        run: |
+          kubectl set image deployment/botgastospareja \
+            botgastospareja=ghcr.io/facusaldaa/botgastospareja:${{ steps.get_version.outputs.VERSION }} \
+            -n bots
+          kubectl rollout status deployment/botgastospareja -n bots --timeout=300s
+
+      - name: Dump rollout logs on failure
+        if: failure()
+        run: kubectl logs deployment/botgastospareja -n bots --tail=50
