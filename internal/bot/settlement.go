@@ -84,7 +84,7 @@ func (h *Handler) handleSettle(handler *Handler, message *tgbotapi.Message, args
 	}
 
 	msg := h.formatSettlementResult(result, startDate, endDate, translator)
-	handler.sendMessage(message.Chat.ID, msg)
+	handler.dynamicMsgs.SendOrEdit(handler.bot, message.Chat.ID, MsgTypeSettle, msg, nil)
 }
 
 // handleSettleBilling handles the /settle_billing command
@@ -169,7 +169,7 @@ func (h *Handler) handleSettleBilling(handler *Handler, message *tgbotapi.Messag
 	}
 
 	msg := h.formatSettlementResult(result, &periodStart, &periodEnd, translator)
-	handler.sendMessage(message.Chat.ID, msg)
+	handler.dynamicMsgs.SendOrEdit(handler.bot, message.Chat.ID, MsgTypeSettle, msg, nil)
 }
 
 // formatSettlementResult formats a settlement result for display
@@ -181,8 +181,8 @@ func (h *Handler) formatSettlementResult(result *service.SettlementResult, start
 	}
 
 	// Get user names
-	user1Name := h.getUserDisplayName(result.User1ID, "Usuario 1")
-	user2Name := h.getUserDisplayName(result.User2ID, "Usuario 2")
+	user1Name := h.getUserDisplayName(result.User1ID)
+	user2Name := h.getUserDisplayName(result.User2ID)
 
 	msg := translator.T("settle_report",
 		periodStr,

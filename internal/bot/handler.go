@@ -42,6 +42,7 @@ type Handler struct {
 	llmService           service.LLMService
 	rateLimiter          map[int64]time.Time       // User ID -> last NL parse time
 	pendingExpenses      map[int64]*PendingExpense // User ID -> pending expense
+	dynamicMsgs          *DynamicMessageTracker    // tracks messages for in-place editing
 	llmEnabled           bool                      // Feature flag for NL and AI features
 	cuotasEnabled        bool                      // Feature flag for /add_cuotas
 }
@@ -59,11 +60,12 @@ func (h *Handler) getTranslator(userID int64) *i18n.Translator {
 	return i18n.NewTranslator(i18n.LanguageEnglish) // Default to English
 }
 
-// getUserDisplayName gets a user's display name, falling back to username or default
-func (h *Handler) getUserDisplayName(telegramID int64, defaultLabel string) string {
+// getUserDisplayName gets a user's display name, falling back to username or Telegram ID.
+// It never returns "User 1" / "User 2" — always uses real info or their Telegram ID.
+func (h *Handler) getUserDisplayName(telegramID int64) string {
 	user, err := h.userService.GetUserByTelegramID(telegramID)
 	if err != nil || user == nil {
-		return defaultLabel
+		return fmt.Sprintf("User %d", telegramID)
 	}
 	if user.DisplayName.Valid && user.DisplayName.String != "" {
 		return user.DisplayName.String
@@ -71,7 +73,7 @@ func (h *Handler) getUserDisplayName(telegramID int64, defaultLabel string) stri
 	if user.Username.Valid && user.Username.String != "" {
 		return "@" + user.Username.String
 	}
-	return defaultLabel
+	return fmt.Sprintf("User %d", telegramID)
 }
 
 // Services interface for dependency injection (if needed)
@@ -108,6 +110,7 @@ func NewHandler(bot *tgbotapi.BotAPI, db *database.DB, llmService service.LLMSer
 		llmService:           llmService,
 		rateLimiter:          make(map[int64]time.Time),
 		pendingExpenses:      make(map[int64]*PendingExpense),
+		dynamicMsgs:          NewDynamicMessageTracker(),
 		llmEnabled:           llmEnabled,
 		cuotasEnabled:        cuotasEnabled,
 	}
@@ -340,6 +343,13 @@ func (h *Handler) handleNaturalLanguageExpense(message *tgbotapi.Message, lobby 
 		return
 	}
 
+	// Normalize category
+	if parsed.Category != "" {
+		if canonical, ok := utils.NormalizeCategory(parsed.Category); ok {
+			parsed.Category = canonical
+		}
+	}
+
 	// Validate installments require payment method
 	if parsed.IsInstallment && parsed.Installments > 0 {
 		if parsed.PaymentMethod == "" {
@@ -535,7 +545,8 @@ func (h *Handler) showExpenseConfirmation(userID int64, chatID int64, pending *P
 	h.sendMessageWithKeyboard(chatID, msg.String(), keyboard)
 }
 
-// confirmExpense creates the expense after user confirmation
+// confirmExpense creates the expense after user confirmation.
+// It edits the original confirmation message in-place instead of sending a new one.
 func (h *Handler) confirmExpense(userID int64) error {
 	pending, exists := h.pendingExpenses[userID]
 	if !exists {
@@ -544,6 +555,7 @@ func (h *Handler) confirmExpense(userID int64) error {
 
 	translator := h.getTranslator(userID)
 	var msg string
+	isSpanish := translator.GetLanguage() == i18n.LanguageSpanishAR
 
 	// Check if this is an installment purchase
 	if pending.Parsed.IsInstallment && pending.Parsed.Installments > 0 {
@@ -569,14 +581,19 @@ func (h *Handler) confirmExpense(userID int64) error {
 		// Remove from pending
 		delete(h.pendingExpenses, userID)
 
-		// Send success message
-		msg = translator.T("installments_created",
+		// Build confirmation text
+		if isSpanish {
+			msg = "✅ *Gasto en cuotas registrado:*\n\n"
+		} else {
+			msg = "✅ *Installment expense recorded:*\n\n"
+		}
+		msg += translator.T("installments_created",
 			utils.FormatCurrency(pending.Parsed.Amount),
 			pending.Parsed.Description,
 			pending.Parsed.Installments)
-		msg += fmt.Sprintf("\n\n")
+		msg += fmt.Sprintf("\n")
 		for i, exp := range expenses {
-			msg += fmt.Sprintf("Cuota %d/%d: ID %d - %s (%s)\n",
+			msg += fmt.Sprintf("• Cuota %d/%d: ID %d - %s (%s)\n",
 				i+1, len(expenses), exp.ID,
 				utils.FormatCurrency(exp.Amount),
 				utils.FormatDate(exp.ExpenseDate))
@@ -599,8 +616,13 @@ func (h *Handler) confirmExpense(userID int64) error {
 		// Remove from pending
 		delete(h.pendingExpenses, userID)
 
-		// Send success message
-		msg = translator.T("expense_added",
+		// Build confirmation text
+		if isSpanish {
+			msg = "✅ *Gasto registrado:*\n\n"
+		} else {
+			msg = "✅ *Expense recorded:*\n\n"
+		}
+		msg += translator.T("expense_added",
 			utils.FormatCurrency(expense.Amount),
 			expense.Description.String)
 		msg += fmt.Sprintf("ID: %d\n", expense.ID)
@@ -617,11 +639,19 @@ func (h *Handler) confirmExpense(userID int64) error {
 		msg += translator.T("expense_list_date", utils.FormatDate(expense.ExpenseDate))
 	}
 
-	h.sendMessage(pending.ChatID, msg)
+	// Edit the original confirmation message instead of sending a new one
+	edit := tgbotapi.NewEditMessageText(pending.ChatID, pending.OriginalMessageID, convertMarkdownToHTML(msg))
+	edit.ParseMode = tgbotapi.ModeHTML
+	if _, err := h.bot.Send(edit); err != nil {
+		log.Printf("Error editing confirmation message: %v — sending new", err)
+		h.sendMessage(pending.ChatID, msg)
+	}
+
 	return nil
 }
 
-// cancelPendingExpense cancels a pending expense
+// cancelPendingExpense cancels a pending expense.
+// It edits the original confirmation message in-place instead of sending a new one.
 func (h *Handler) cancelPendingExpense(userID int64) {
 	pending, exists := h.pendingExpenses[userID]
 	if !exists {
@@ -631,17 +661,23 @@ func (h *Handler) cancelPendingExpense(userID int64) {
 	delete(h.pendingExpenses, userID)
 
 	translator := h.getTranslator(userID)
-	// Check if Spanish by testing a translation
-	testMsg := translator.T("waiting_partner")
-	isSpanish := strings.Contains(testMsg, "pareja") || strings.Contains(testMsg, "Esperando")
+	// Check if Spanish
+	isSpanish := translator.GetLanguage() == i18n.LanguageSpanishAR
 
 	var msg string
 	if isSpanish {
-		msg = "❌ Gasto cancelado. No se guardó nada."
+		msg = "❌ *Gasto cancelado. No se guardó nada.*"
 	} else {
-		msg = "❌ Expense cancelled. Nothing was saved."
+		msg = "❌ *Expense cancelled. Nothing was saved.*"
 	}
-	h.sendMessage(pending.ChatID, msg)
+
+	// Edit the original confirmation message instead of sending a new one
+	edit := tgbotapi.NewEditMessageText(pending.ChatID, pending.OriginalMessageID, convertMarkdownToHTML(msg))
+	edit.ParseMode = tgbotapi.ModeHTML
+	if _, err := h.bot.Send(edit); err != nil {
+		log.Printf("Error editing cancellation message: %v — sending new", err)
+		h.sendMessage(pending.ChatID, msg)
+	}
 }
 
 // buildExpenseContext builds context for LLM expense parsing
@@ -725,11 +761,6 @@ func (h *Handler) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
 			if err != nil {
 				log.Printf("Error confirming expense: %v", err)
 				h.sendMessage(query.Message.Chat.ID, "❌ Error al confirmar el gasto. Por favor intentá de nuevo.")
-			} else {
-				// Edit message to show it was confirmed
-				editMsg := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, query.Message.Text+"\n\n✅ *Confirmado*")
-				editMsg.ParseMode = tgbotapi.ModeHTML
-				h.bot.Send(editMsg)
 			}
 		}
 		// Acknowledge callback
@@ -742,10 +773,6 @@ func (h *Handler) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
 		userID, err := extractUserIDFromCallback(query.Data, "exp_cancel_")
 		if err == nil && query.From.ID == userID {
 			h.cancelPendingExpense(userID)
-			// Edit message to show it was cancelled
-			editMsg := tgbotapi.NewEditMessageText(query.Message.Chat.ID, query.Message.MessageID, query.Message.Text+"\n\n❌ *Cancelado*")
-			editMsg.ParseMode = tgbotapi.ModeHTML
-			h.bot.Send(editMsg)
 		}
 		// Acknowledge callback
 		callback := tgbotapi.NewCallback(query.ID, "")
@@ -883,6 +910,10 @@ func (h *Handler) GetLobbyService() *service.LobbyService {
 
 func (h *Handler) GetSettlementService() *service.SettlementService {
 	return h.settlementService
+}
+
+func (h *Handler) GetUserService() *service.UserService {
+	return h.userService
 }
 
 func (h *Handler) GetExpenseService() *service.ExpenseService {
