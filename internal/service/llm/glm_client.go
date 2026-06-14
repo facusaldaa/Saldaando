@@ -15,13 +15,14 @@ import (
 	"time"
 )
 
-// GLMClient implements LLMProvider for GLM-4.7 API
+// GLMClient implements LLMProvider for GLM-4 API
 type GLMClient struct {
-	apiKey     string
-	modelName  string
-	baseURL    string
+	apiKey      string
+	modelName   string
+	visionModel string // separate model for vision (e.g., "glm-4v-plus"); empty = vision disabled
+	baseURL     string
 	temperature float64
-	httpClient *http.Client
+	httpClient  *http.Client
 }
 
 // GLMRequest represents a chat completion request
@@ -83,9 +84,10 @@ type VisionMessage struct {
 // NewGLMClient creates a new GLM client
 func NewGLMClient(cfg *config.Config) (*GLMClient, error) {
 	return &GLMClient{
-		apiKey:     cfg.GLMAPIKey,
-		modelName:  cfg.GLMModelName,
-		baseURL:    cfg.GLMBaseURL,
+		apiKey:      cfg.GLMAPIKey,
+		modelName:   cfg.GLMModelName,
+		visionModel: cfg.GLMVisionModel,
+		baseURL:     cfg.GLMBaseURL,
 		temperature: cfg.GLMTemperature,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -117,15 +119,21 @@ func (c *GLMClient) ParseExpense(ctx context.Context, message string, context Ex
 
 // ParseExpenseFromImage parses an expense from a receipt image using vision
 func (c *GLMClient) ParseExpenseFromImage(ctx context.Context, imageData []byte, context ExpenseContext) (*ParsedExpense, error) {
+	// Check if vision model is configured
+	visionModel := c.visionModel
+	if visionModel == "" {
+		visionModel = c.modelName // Try the main model as fallback
+	}
+
 	// Build a receipt OCR prompt
 	prompt := buildReceiptOCRPrompt(context)
-	
+
 	// Encode image to base64 data URI
 	encoded := base64.StdEncoding.EncodeToString(imageData)
 	mimeType := detectImageMimeType(imageData)
 	dataURI := fmt.Sprintf("data:%s;base64,%s", mimeType, encoded)
-	
-	response, err := c.callVisionAPI(ctx, prompt, dataURI)
+
+	response, err := c.callVisionAPI(ctx, prompt, dataURI, visionModel)
 	if err != nil {
 		return nil, fmt.Errorf("GLM vision API call failed: %w", err)
 	}
@@ -286,11 +294,11 @@ func extractJSONFromResponse(response string) string {
 }
 
 // callVisionAPI sends a multi-modal request (text + image) to the GLM API
-func (c *GLMClient) callVisionAPI(ctx context.Context, textPrompt string, imageDataURI string) (string, error) {
+func (c *GLMClient) callVisionAPI(ctx context.Context, textPrompt string, imageDataURI string, model string) (string, error) {
 	url := fmt.Sprintf("%s/chat/completions", c.baseURL)
 
 	reqBody := VisionRequest{
-		Model: c.modelName,
+		Model: model,
 		Messages: []VisionMessage{
 			{
 				Role: "user",
