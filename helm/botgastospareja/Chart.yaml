@@ -2,8 +2,8 @@ apiVersion: v2
 name: botgastospareja
 description: A Helm chart for deploying Bot Gastos Pareja to Kubernetes
 type: application
-version: 1.0.9
-appVersion: "1.0.9"
+version: 1.0.10
+appVersion: "1.0.10"
 keywords:
   - telegram
   - bot
