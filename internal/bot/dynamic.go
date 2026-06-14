@@ -94,7 +94,7 @@ func EditConfirmationInline(bot *tgbotapi.BotAPI, chatID int64, messageID int, n
 		log.Printf("Error editing confirmation message: %v", err)
 	}
 	// Acknowledge any pending callback
-	callback := tgbotapi.NewCallback(messageID, "")
+	callback := tgbotapi.NewCallback("0", "")
 	bot.Request(callback)
 }
 
