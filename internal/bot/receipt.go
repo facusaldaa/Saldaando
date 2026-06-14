@@ -19,6 +19,14 @@ const MaxImageSize = 20 * 1024 * 1024
 
 // handlePhoto processes a photo message — OCR via vision API → confirmation
 func (h *Handler) handlePhoto(message *tgbotapi.Message) {
+	log.Printf("handlePhoto called: chatID=%d, From=nil?=%v, Photo=%d, Document=%v",
+		message.Chat.ID, message.From == nil, len(message.Photo), message.Document != nil)
+
+	if message.From == nil {
+		log.Printf("handlePhoto: cannot process — message has no From field")
+		return
+	}
+
 	userID := message.From.ID
 
 	// Must have LLM enabled for OCR
