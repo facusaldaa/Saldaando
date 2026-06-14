@@ -20,7 +20,7 @@ FROM alpine:latest
 
 LABEL org.opencontainers.image.source=https://github.com/facusaldaa/Saldaando
  
-RUN apk --no-cache add ca-certificates sqlite
+RUN apk --no-cache add ca-certificates sqlite poppler-utils
 
 WORKDIR /root/
 

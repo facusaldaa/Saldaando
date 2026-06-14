@@ -9,6 +9,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -16,6 +18,9 @@ import (
 
 // MaxImageSize is the maximum allowed image size in bytes (20MB)
 const MaxImageSize = 20 * 1024 * 1024
+
+// MaxPDFPages is the max number of PDF pages to process (first N pages)
+const MaxPDFPages = 3
 
 // handlePhoto processes a photo message — OCR via vision API → confirmation
 func (h *Handler) handlePhoto(message *tgbotapi.Message) {
@@ -177,10 +182,11 @@ func (h *Handler) handlePhoto(message *tgbotapi.Message) {
 	h.showExpenseConfirmation(userID, message.Chat.ID, pending, translator)
 }
 
-// downloadPhoto downloads the largest photo from a message
+// downloadPhoto downloads the largest photo from a message, or converts a PDF to image
 func (h *Handler) downloadPhoto(message *tgbotapi.Message) ([]byte, error) {
 	var fileID string
 	var fileSize int
+	isPDF := false
 
 	if len(message.Photo) > 0 {
 		// Pick the largest photo
@@ -188,19 +194,23 @@ func (h *Handler) downloadPhoto(message *tgbotapi.Message) ([]byte, error) {
 		fileID = largest.FileID
 		fileSize = largest.FileSize
 	} else if message.Document != nil {
-		// Only accept images sent as documents
-		if message.Document.MimeType == "image/jpeg" || message.Document.MimeType == "image/png" || message.Document.MimeType == "image/webp" {
+		mime := message.Document.MimeType
+		if mime == "image/jpeg" || mime == "image/png" || mime == "image/webp" {
 			fileID = message.Document.FileID
 			fileSize = message.Document.FileSize
+		} else if mime == "application/pdf" {
+			fileID = message.Document.FileID
+			fileSize = message.Document.FileSize
+			isPDF = true
 		} else {
-			return nil, fmt.Errorf("unsupported document type: %s", message.Document.MimeType)
+			return nil, fmt.Errorf("unsupported document type: %s", mime)
 		}
 	} else {
-		return nil, fmt.Errorf("no photo or image document found")
+		return nil, fmt.Errorf("no photo or document found")
 	}
 
 	if fileSize > MaxImageSize {
-		return nil, fmt.Errorf("image too large: %d bytes (max %d)", fileSize, MaxImageSize)
+		return nil, fmt.Errorf("file too large: %d bytes (max %d)", fileSize, MaxImageSize)
 	}
 
 	// Get file path from Telegram
@@ -228,7 +238,48 @@ func (h *Handler) downloadPhoto(message *tgbotapi.Message) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read file data: %w", err)
 	}
 
+	// Convert PDF to PNG image using pdftoppm
+	if isPDF {
+		imgData, err := convertPDFToImage(buf.Bytes())
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert PDF to image: %w", err)
+		}
+		return imgData, nil
+	}
+
 	return buf.Bytes(), nil
+}
+
+// convertPDFToImage converts the first page of a PDF to a PNG image using pdftoppm
+func convertPDFToImage(pdfData []byte) ([]byte, error) {
+	tmpDir, err := os.MkdirTemp("", "pdfocr-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Write PDF to temp file
+	pdfPath := tmpDir + "/input.pdf"
+	if err := os.WriteFile(pdfPath, pdfData, 0644); err != nil {
+		return nil, fmt.Errorf("failed to write temp PDF: %w", err)
+	}
+
+	// Convert first page to PNG
+	outPrefix := tmpDir + "/page"
+	cmd := exec.Command("pdftoppm", "-png", "-r", "200", "-f", "1", "-l", "1", pdfPath, outPrefix)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("pdftoppm failed: %s: %w", string(output), err)
+	}
+
+	// Read the generated PNG
+	imgPath := outPrefix + "-1.png"
+	imgData, err := os.ReadFile(imgPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read PDF page image: %w", err)
+	}
+
+	return imgData, nil
 }
 
 // toLower is a simple ASCII toLower helper for spender matching
@@ -242,4 +293,12 @@ func toLower(s string) string {
 		b[i] = c
 	}
 	return string(b)
+}
+
+// getDocMime returns the MIME type of a document, or empty string if nil
+func getDocMime(doc *tgbotapi.Document) string {
+	if doc == nil {
+		return ""
+	}
+	return doc.MimeType
 }
