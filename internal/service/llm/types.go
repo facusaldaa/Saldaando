@@ -1,6 +1,9 @@
 package llm
 
-import "botGastosPareja/internal/database"
+import (
+	"botGastosPareja/internal/database"
+	"context"
+)
 
 // ExpenseContext contains context information for parsing expenses
 type ExpenseContext struct {
@@ -27,6 +30,14 @@ type ParsedExpense struct {
 	ClarificationQuestion string `json:"clarification_question"`
 	IsInstallment       bool    `json:"is_installment"` // true if this is an installment purchase
 	Installments        int     `json:"installments"`   // number of installments (cuotas)
+}
+
+// LLMProvider defines the interface for LLM providers
+type LLMProvider interface {
+	ParseExpense(ctx context.Context, message string, context ExpenseContext) (*ParsedExpense, error)
+	ParseExpenseFromImage(ctx context.Context, imageData []byte, context ExpenseContext) (*ParsedExpense, error)
+	AnalyzeExpenses(ctx context.Context, expenses []*database.Expense, lobby *database.Lobby, analysisType string) (*AnalysisInsights, error)
+	HealthCheck(ctx context.Context) error
 }
 
 // AnalysisInsights represents AI-generated insights about expenses

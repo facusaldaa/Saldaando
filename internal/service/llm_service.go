@@ -9,6 +9,7 @@ import (
 // LLMService provides a high-level interface for LLM operations
 type LLMService interface {
 	ParseExpenseFromMessage(ctx context.Context, message string, context llm.ExpenseContext) (*llm.ParsedExpense, error)
+	ParseExpenseFromImage(ctx context.Context, imageData []byte, context llm.ExpenseContext) (*llm.ParsedExpense, error)
 	GenerateAnalysisInsights(ctx context.Context, expenses []*database.Expense, lobby *database.Lobby, analysisType string) (*llm.AnalysisInsights, error)
 }
 
@@ -25,6 +26,11 @@ func NewLLMService(provider llm.LLMProvider) LLMService {
 // ParseExpenseFromMessage parses an expense from a natural language message
 func (s *llmServiceWrapper) ParseExpenseFromMessage(ctx context.Context, message string, context llm.ExpenseContext) (*llm.ParsedExpense, error) {
 	return s.provider.ParseExpense(ctx, message, context)
+}
+
+// ParseExpenseFromImage parses an expense from an image using vision
+func (s *llmServiceWrapper) ParseExpenseFromImage(ctx context.Context, imageData []byte, context llm.ExpenseContext) (*llm.ParsedExpense, error) {
+	return s.provider.ParseExpenseFromImage(ctx, imageData, context)
 }
 
 // GenerateAnalysisInsights generates AI-powered insights

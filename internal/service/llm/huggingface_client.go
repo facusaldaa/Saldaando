@@ -64,6 +64,11 @@ func (c *HuggingFaceClient) ParseExpense(ctx context.Context, message string, co
 	return &parsed, nil
 }
 
+// ParseExpenseFromImage returns error — HuggingFace does not support vision
+func (c *HuggingFaceClient) ParseExpenseFromImage(ctx context.Context, imageData []byte, context ExpenseContext) (*ParsedExpense, error) {
+	return nil, fmt.Errorf("HuggingFace does not support image/vision processing")
+}
+
 // AnalyzeExpenses generates AI insights about expenses
 func (c *HuggingFaceClient) AnalyzeExpenses(ctx context.Context, expenses []*database.Expense, lobby *database.Lobby, analysisType string) (*AnalysisInsights, error) {
 	prompt := buildAnalysisPrompt(expenses, lobby, analysisType)

@@ -201,6 +201,12 @@ Para más detalles, usá cada comando sin argumentos para ver su uso.`,
 	"language_usage":   "❌ Uso: `/language <código>`\n\nIdiomas disponibles:\n%s",
 	"language_invalid": "❌ Código de idioma inválido. Disponibles: %s",
 
+	// Receipt OCR
+	"receipt_llm_disabled": "❌ El OCR de recibos no está disponible en este momento.",
+	"receipt_processing":   "⏳ Analizando recibo...",
+	"receipt_failed":       "❌ No pude leer el recibo. Asegurate de que la foto sea clara y tenga el monto visible.\n\nPodés usar /add para agregar el gasto manualmente.",
+	"receipt_no_amount":    "❌ No encontré un monto válido en el recibo. Podés usar /add para agregarlo manualmente.",
+
 	// Examples
 	"examples": `📚 *EJEMPLOS DE COMANDOS - BOT DE GASTOS EN PAREJA*
 
