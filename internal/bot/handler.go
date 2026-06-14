@@ -19,13 +19,14 @@ import (
 
 // PendingExpense stores a parsed expense waiting for user confirmation
 type PendingExpense struct {
-	Parsed            *llm.ParsedExpense
-	LobbyID           int64
-	SpenderID         int64
-	ExpenseDate       time.Time
-	PaymentMethodID   *int64
-	OriginalMessageID int
-	ChatID            int64
+	Parsed               *llm.ParsedExpense
+	LobbyID              int64
+	SpenderID            int64
+	ExpenseDate          time.Time
+	PaymentMethodID      *int64
+	OriginalMessageID    int // The user's original message (photo/text) — for reactions
+	ConfirmationMessageID int // The bot's confirmation message — for in-place edit
+	ChatID               int64
 }
 
 // Handler handles Telegram bot updates
@@ -248,15 +249,6 @@ func (h *Handler) HandleUpdate(update tgbotapi.Update) {
 		return
 	}
 
-	// Handle image documents
-	if update.Message.Document != nil {
-		mime := update.Message.Document.MimeType
-		if mime == "image/jpeg" || mime == "image/png" || mime == "image/webp" {
-			h.handlePhoto(update.Message)
-			return
-		}
-	}
-
 	// Handle regular messages (for interactive flows)
 	h.handleMessage(update.Message)
 }
@@ -441,12 +433,15 @@ func (h *Handler) handleNaturalLanguageExpense(message *tgbotapi.Message, lobby 
 	}
 	h.pendingExpenses[userID] = pending
 
-	// Show confirmation message with inline keyboard
-	h.showExpenseConfirmation(userID, message.Chat.ID, pending, translator)
+	// Show confirmation message with inline keyboard and store its ID
+	confMsgID := h.showExpenseConfirmation(userID, message.Chat.ID, pending, translator)
+	pending.ConfirmationMessageID = confMsgID
+	h.pendingExpenses[userID] = pending
 }
 
 // showExpenseConfirmation shows a confirmation message with parsed expense details
-func (h *Handler) showExpenseConfirmation(userID int64, chatID int64, pending *PendingExpense, translator *i18n.Translator) {
+// Returns the sent message ID so callers can store it for in-place editing later.
+func (h *Handler) showExpenseConfirmation(userID int64, chatID int64, pending *PendingExpense, translator *i18n.Translator) int {
 	var msg strings.Builder
 
 	// Detect language directly from translator settings
@@ -562,7 +557,12 @@ func (h *Handler) showExpenseConfirmation(userID int64, chatID int64, pending *P
 		),
 	)
 
-	h.sendMessageWithKeyboard(chatID, msg.String(), keyboard)
+	msgId, err := h.sendMessageWithKeyboard(chatID, msg.String(), keyboard)
+	if err != nil {
+		log.Printf("Error sending confirmation message: %v", err)
+		return 0
+	}
+	return msgId
 }
 
 // confirmExpense creates the expense after user confirmation.
@@ -660,7 +660,11 @@ func (h *Handler) confirmExpense(userID int64) error {
 	}
 
 	// Edit the original confirmation message instead of sending a new one
-	edit := tgbotapi.NewEditMessageText(pending.ChatID, pending.OriginalMessageID, convertMarkdownToHTML(msg))
+	editTarget := pending.ConfirmationMessageID
+	if editTarget == 0 {
+		editTarget = pending.OriginalMessageID // fallback
+	}
+	edit := tgbotapi.NewEditMessageText(pending.ChatID, editTarget, convertMarkdownToHTML(msg))
 	edit.ParseMode = tgbotapi.ModeHTML
 	if _, err := h.bot.Send(edit); err != nil {
 		log.Printf("Error editing confirmation message: %v — sending new", err)
@@ -692,7 +696,11 @@ func (h *Handler) cancelPendingExpense(userID int64) {
 	}
 
 	// Edit the original confirmation message instead of sending a new one
-	edit := tgbotapi.NewEditMessageText(pending.ChatID, pending.OriginalMessageID, convertMarkdownToHTML(msg))
+	editTarget := pending.ConfirmationMessageID
+	if editTarget == 0 {
+		editTarget = pending.OriginalMessageID // fallback
+	}
+	edit := tgbotapi.NewEditMessageText(pending.ChatID, editTarget, convertMarkdownToHTML(msg))
 	edit.ParseMode = tgbotapi.ModeHTML
 	if _, err := h.bot.Send(edit); err != nil {
 		log.Printf("Error editing cancellation message: %v — sending new", err)
@@ -910,17 +918,32 @@ func (h *Handler) getLobbyForMessage(message *tgbotapi.Message) (*database.Lobby
 	return h.lobbyService.GetLobbyByUserIDAndGroup(userID, groupChatID)
 }
 
-// sendMessageWithKeyboard sends a message with inline keyboard
-func (h *Handler) sendMessageWithKeyboard(chatID int64, text string, keyboard tgbotapi.InlineKeyboardMarkup) {
+// setReaction sets a reaction emoji on a message (e.g. 👀 while processing, ✅ when done)
+func (h *Handler) setReaction(chatID int64, messageID int, emoji string) {
+	params := tgbotapi.Params{
+		"chat_id":    strconv.FormatInt(chatID, 10),
+		"message_id": strconv.Itoa(messageID),
+		"reaction":   fmt.Sprintf(`[{"type":"emoji","emoji":"%s"}]`, emoji),
+	}
+	if _, err := h.bot.MakeRequest("setMessageReaction", params); err != nil {
+		log.Printf("Error setting reaction %s on msg %d: %v", emoji, messageID, err)
+	}
+}
+
+// sendMessageWithKeyboard sends a message with inline keyboard and returns the sent message ID
+func (h *Handler) sendMessageWithKeyboard(chatID int64, text string, keyboard tgbotapi.InlineKeyboardMarkup) (int, error) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = tgbotapi.ModeHTML
 	// Convert markdown-style formatting to HTML
 	text = convertMarkdownToHTML(text)
 	msg.Text = text
 	msg.ReplyMarkup = keyboard
-	if _, err := h.bot.Send(msg); err != nil {
+	sent, err := h.bot.Send(msg)
+	if err != nil {
 		log.Printf("Error sending message with keyboard: %v", err)
+		return 0, err
 	}
+	return sent.MessageID, nil
 }
 
 // Getter methods for services (used by scheduler)
