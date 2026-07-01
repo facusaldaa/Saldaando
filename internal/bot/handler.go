@@ -157,6 +157,10 @@ func (h *Handler) RegisterTelegramCommands() error {
 			Description: "Get AI-powered expense review",
 		},
 		{
+			Command:     "export_ynab",
+			Description: "Export expenses as YNAB-compatible TSV file",
+		},
+		{
 			Command:     "settings",
 			Description: "Configure lobby settings",
 		},

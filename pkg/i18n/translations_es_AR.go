@@ -46,6 +46,7 @@ var spanishARTranslations = map[string]string{
 /summary_billing [método_pago] [período] - Obtener resumen por ciclo de facturación
 /settle - Calcular quién le debe a quién
 /settle_billing [método_pago] [período] - Calcular liquidación para período de facturación
+/export_ynab [mes] - Exportar gastos como archivo TSV compatible con YNAB (para importar en Gasti)
 
 *Configuración:*
 /payment_methods - Gestionar métodos de pago (agregar, editar, eliminar)

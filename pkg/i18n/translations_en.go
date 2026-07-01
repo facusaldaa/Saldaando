@@ -46,6 +46,7 @@ var englishTranslations = map[string]string{
 /summary_billing [payment_method] [period] - Get summary by billing cycle
 /settle - Calculate who owes whom
 /settle_billing [payment_method] [period] - Calculate settlement for billing period
+/export_ynab [month] - Export expenses as YNAB-compatible TSV file (for Gasti import)
 
 *Configuration:*
 /payment_methods - Manage payment methods (add, edit, delete)

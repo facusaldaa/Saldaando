@@ -38,6 +38,9 @@ func (h *Handler) registerCommands() {
 
 	// Invite commands
 	h.registerInviteCommands()
+
+	// Export commands
+	h.registerExportCommands()
 }
 
 // handleStart handles the /start command
