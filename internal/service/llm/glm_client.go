@@ -237,8 +237,8 @@ func (c *GLMClient) callAPI(ctx context.Context, prompt string) (string, error) 
 			} else {
 				lastErr = fmt.Errorf("GLM API error: status %d, body: %s", resp.StatusCode, string(body))
 			}
-			// Don't retry on 4xx errors (client errors)
-			if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			// Don't retry on 4xx errors (client errors), except 429 (rate limit)
+			if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != 429 {
 				return "", lastErr
 			}
 			continue

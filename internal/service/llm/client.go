@@ -55,11 +55,11 @@ func (f *FallbackProvider) ParseExpense(ctx context.Context, message string, con
 }
 
 // ParseExpenseFromImage attempts to parse expense from image using primary provider
+// HuggingFace is skipped as fallback because it does not support vision processing.
 func (f *FallbackProvider) ParseExpenseFromImage(ctx context.Context, imageData []byte, context ExpenseContext) (*ParsedExpense, error) {
 	result, err := f.primary.ParseExpenseFromImage(ctx, imageData, context)
-	if err != nil && f.useFallback && f.fallback != nil {
-		log.Printf("GLM vision parsing failed, trying HuggingFace fallback: %v", err)
-		return f.fallback.ParseExpenseFromImage(ctx, imageData, context)
+	if err != nil {
+		log.Printf("GLM vision parsing failed (no fallback for vision): %v", err)
 	}
 	return result, err
 }

@@ -65,7 +65,7 @@ func (h *Handler) handlePhoto(message *tgbotapi.Message) {
 	imageData, err := h.downloadPhoto(message)
 	if err != nil {
 		log.Printf("Failed to download photo: %v", err)
-		h.setReaction(message.Chat.ID, message.MessageID, "❌")
+		h.setReaction(message.Chat.ID, message.MessageID, "👎")
 		if isSpanish {
 			h.sendMessage(message.Chat.ID, "❌ Error al descargar la imagen.")
 		} else {
@@ -78,7 +78,7 @@ func (h *Handler) handlePhoto(message *tgbotapi.Message) {
 	expenseCtx, err := h.buildExpenseContext(lobby, userID)
 	if err != nil {
 		log.Printf("Failed to build expense context: %v", err)
-		h.setReaction(message.Chat.ID, message.MessageID, "❌")
+		h.setReaction(message.Chat.ID, message.MessageID, "👎")
 		if isSpanish {
 			h.sendMessage(message.Chat.ID, "❌ Error interno.")
 		} else {
@@ -92,7 +92,7 @@ func (h *Handler) handlePhoto(message *tgbotapi.Message) {
 	parsed, err := h.llmService.ParseExpenseFromImage(context.Background(), imageData, expenseCtx)
 	if err != nil {
 		log.Printf("Vision OCR failed: %v", err)
-		h.setReaction(message.Chat.ID, message.MessageID, "❌")
+		h.setReaction(message.Chat.ID, message.MessageID, "👎")
 		if isSpanish {
 			h.sendMessage(message.Chat.ID, "❌ No pude leer el recibo. Asegurate de que la foto sea clara y tenga el monto visible.\n\nPodés usar /add para agregar el gasto manualmente.")
 		} else {
@@ -103,7 +103,7 @@ func (h *Handler) handlePhoto(message *tgbotapi.Message) {
 
 	// Validate parsed amount
 	if parsed.Amount <= 0 {
-		h.setReaction(message.Chat.ID, message.MessageID, "❌")
+		h.setReaction(message.Chat.ID, message.MessageID, "👎")
 		if isSpanish {
 			h.sendMessage(message.Chat.ID, "❌ No encontré un monto válido en el recibo. Podés usar /add para agregarlo manualmente.")
 		} else {
@@ -112,8 +112,8 @@ func (h *Handler) handlePhoto(message *tgbotapi.Message) {
 		return
 	}
 
-	// Success reaction — change 👀 to ✅
-	h.setReaction(message.Chat.ID, message.MessageID, "✅")
+	// Success reaction — change 👀 to 👍
+	h.setReaction(message.Chat.ID, message.MessageID, "👍")
 
 	// Normalize category
 	if parsed.Category != "" {
